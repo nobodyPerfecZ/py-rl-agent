@@ -13,8 +13,8 @@ class TestC51(unittest.TestCase):
             env_type="CartPole-v1",
             policy_type="q-prob-net",
             policy_kwargs={
-                "V_min": -10,
-                "V_max": 10,
+                "Q_min": -1,
+                "Q_max": 1,
                 "num_atoms": 51,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),

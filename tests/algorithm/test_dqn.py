@@ -19,7 +19,13 @@ class TestDQN(unittest.TestCase):
         self.agent = DQN(
             env_type="CartPole-v1",
             policy_type="q-net",
-            policy_kwargs={"architecture": [128], "activation_fn": nn.Tanh(), "bias": True},
+            policy_kwargs={
+                "Q_min": -1,
+                "Q_max": 1,
+                "architecture": [128],
+                "activation_fn": nn.Tanh(),
+                "bias": True
+            },
             strategy_type="linear-epsilon",
             strategy_kwargs={"epsilon_min": 0.1, "epsilon_max": 1.0, "steps": 1000},
             replay_buffer_type="ring",

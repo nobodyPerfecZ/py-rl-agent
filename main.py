@@ -7,11 +7,17 @@ if __name__ == "__main__":
     dqn = ClippedDDQN(
         env_type="CartPole-v1",
         policy_type="q-net",
-        policy_kwargs={"architecture": [64, 64], "activation_fn": nn.LeakyReLU(), "bias": True},
+        policy_kwargs={
+            "Q_min": -1,
+            "Q_max": 1,
+            "architecture": [128, 128],
+            "activation_fn": nn.LeakyReLU(),
+            "bias": True
+        },
         strategy_type="exp-epsilon",
-        strategy_kwargs={"epsilon_min": 0.01, "epsilon_max": 1.0, "decay_factor": 0.995},
+        strategy_kwargs={"epsilon_min": 0.01, "epsilon_max": 1.0, "decay_factor": 0.95},
         replay_buffer_type="ring",
-        replay_buffer_kwargs={"max_size": 10000},
+        replay_buffer_kwargs={"max_size": 2000},
         optimizer_type="adam",
         optimizer_kwargs={"lr": 1e-3},
         lr_scheduler_type="linear-lr",

@@ -124,8 +124,8 @@ class C51(DQN):
 
             # Compute the projection of t_z onto the support
             t_z = (rewards + ~dones * self.gamma).unsqueeze(1) * self.target_q_net.Z.unsqueeze(0)
-            t_z = torch.clamp_(t_z, min=self.target_q_net.V_min, max=self.target_q_net.V_max)
-            b = (t_z - self.target_q_net.V_min) / self.target_q_net.delta_Z
+            t_z = torch.clamp_(t_z, min=self.target_q_net.Q_min, max=self.target_q_net.Q_max)
+            b = (t_z - self.target_q_net.Q_min) / self.target_q_net.delta_Z
             l = b.floor().long()
             u = b.ceil().long()
 

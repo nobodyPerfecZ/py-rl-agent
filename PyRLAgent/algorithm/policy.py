@@ -22,12 +22,17 @@ class QNetwork(Policy):
             self,
             observation_space: spaces.Space,
             action_space: spaces.Space,
+            Q_min: float,
+            Q_max: float,
             architecture: list[int],
             activation_fn: Union[nn.Module, list[nn.Module]],
             bias: bool,
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
     ):
+        self.Q_min = Q_min
+        self.Q_max = Q_max
+
         if isinstance(activation_fn, nn.Module):
             # Case: All hidden layers should have the same activation function
             activation_fn = [activation_fn for _ in range(len(architecture))]
@@ -91,8 +96,8 @@ class QProbNetwork(Policy):
             self,
             observation_space: spaces.Space,
             action_space: spaces.space,
-            V_min: float,
-            V_max: float,
+            Q_min: float,
+            Q_max: float,
             num_atoms: int,
             architecture: list[int],
             activation_fn: Union[nn.Module, list[nn.Module]],
@@ -100,12 +105,12 @@ class QProbNetwork(Policy):
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
     ):
-        self.V_min = V_min
-        self.V_max = V_max
+        self.Q_min = Q_min
+        self.Q_max = Q_max
         self.num_actions = action_space.n
         self.num_atoms = num_atoms
-        self.delta_Z = (self.V_max - self.V_min) / (self.num_atoms - 1)
-        self.Z = torch.linspace(self.V_min, self.V_max, self.num_atoms)  # support values
+        self.delta_Z = (self.Q_max - self.Q_min) / (self.num_atoms - 1)
+        self.Z = torch.linspace(self.Q_min, self.Q_max, self.num_atoms)  # support values
 
         if isinstance(activation_fn, nn.Module):
             # Case: All hidden layers should have the same activation function

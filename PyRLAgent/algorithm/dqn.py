@@ -368,6 +368,9 @@ class DQN(Algorithm):
             Q_next = self.target_q_net.forward(next_states)
             q_targets = rewards + ~dones * self.gamma * Q_next.max(dim=1)[0]
 
+            # Clip the target q-values
+            q_targets = torch.clamp_(q_targets, min=self.target_q_net.Q_min, max=self.target_q_net.Q_max)
+
         # Calculate the predicted q-values
         Q = self.q_net.forward(states)
         q_values = Q.gather(dim=1, index=actions.unsqueeze(1)).squeeze()

@@ -19,6 +19,8 @@ class TestQNetwork(unittest.TestCase):
         self.model = QNetwork(
             observation_space=env.observation_space,
             action_space=env.action_space,
+            Q_min=-1,
+            Q_max=1,
             architecture=[16, 32],
             activation_fn=nn.ReLU(),
             bias=True,
