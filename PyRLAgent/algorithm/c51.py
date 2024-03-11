@@ -147,9 +147,5 @@ class C51(DQN):
 
         dist = self.q_net.forward(states)
         dist = dist[range(self.batch_size), actions]
-        # log_p = F.log_softmax(dist[range(self.batch_size), actions], dim=-1)
 
-        # Compute the cross-entropy loss
-        # loss = -(proj_dist * log_p).sum(1).mean()
-        # return loss
         return self.loss_fn(dist, proj_dist, **self.loss_kwargs)
