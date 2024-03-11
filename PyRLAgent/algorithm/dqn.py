@@ -9,7 +9,7 @@ from torch.optim import Adam, AdamW, Optimizer, SGD
 from torch.optim.lr_scheduler import ExponentialLR, LinearLR, LRScheduler, StepLR
 
 from PyRLAgent.algorithm.abstract_algorithm import Algorithm
-from PyRLAgent.algorithm.policy import QNetwork
+from PyRLAgent.algorithm.policy import QDuelingNetwork, QNetwork
 from PyRLAgent.common.buffer.abstract_buffer import Buffer
 from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import Policy
@@ -177,7 +177,10 @@ class DQN(Algorithm):
             dict[str, Any]:
                 The mapping between keys and policy classes
         """
-        return {"q-net": QNetwork}
+        return {
+            "q-net": QNetwork,
+            "q-dueling-net": QDuelingNetwork,
+        }
 
     @property
     def replay_buffer_mapping(self) -> dict[str, Any]:
