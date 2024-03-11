@@ -1,12 +1,12 @@
 import unittest
-import torch.nn as nn
-import numpy as np
+
 import gymnasium
+import numpy as np
 import torch
+import torch.nn as nn
 import yaml
 
-from PyRLAgent.common.strategy.epsilon_greedy import EpsilonGreedy
-from PyRLAgent.dqn.policy import QNetwork
+from PyRLAgent.algorithm.policy import QNetwork
 
 
 class TestQNetwork(unittest.TestCase):
@@ -69,6 +69,11 @@ class TestQNetwork(unittest.TestCase):
 
         # Check if they are equal overriding __eq__ causes much slower training
         self.assertEqual(str(model), str(self.model))
+
+
+class TestQProbNetwork(unittest.TestCase):
+    # TODO: Implement here
+    pass
 
 
 if __name__ == '__main__':

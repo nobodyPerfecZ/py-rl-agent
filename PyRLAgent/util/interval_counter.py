@@ -4,14 +4,28 @@ class IntervalCounter:
 
     This class provides functionality to count and track intervals or periods of time.
     It is commonly used to monitor when a specified interval has elapsed.
+
+    Attributes:
+
+        initial_value (int):
+            The starting value of the counter
+
+        modulo (int):
+            The modulo value of the counter
     """
 
     def __init__(self, initial_value: int = 0, modulo: int = 1):
-        if initial_value < 0:
-            raise ValueError("Illegal initial_value! The argument should be higher or equal to 0!")
+        if initial_value < 0 or initial_value >= modulo:
+            raise ValueError(
+                "Illegal initial_value. "
+                "The argument should be 0 <= initial_value < modulo!"
+            )
 
         if modulo <= 0:
-            raise ValueError("Illegal modulo! The argument should be higher or equal to 1!")
+            raise ValueError(
+                "Illegal modulo. "
+                "The argument should >= 1!"
+            )
 
         self.initial_value = initial_value
         self.curr_value = initial_value
@@ -29,7 +43,7 @@ class IntervalCounter:
 
         Args:
             value (int):
-                Add to the current counter value
+                The value to add to the current counter value
         """
         if value <= 0:
             raise ValueError("Illegal value! The argument should be higher or equal to 1!")
@@ -39,7 +53,7 @@ class IntervalCounter:
         """
         Returns:
             int:
-                Current counter value
+                The current counter
         """
         return self.curr_value
 
@@ -52,7 +66,12 @@ class IntervalCounter:
         return self.curr_value == self.initial_value
 
     def __str__(self) -> str:
-        return f"IntervalCounter(initial_value={self.initial_value}, curr_value={self.curr_value}, modulo={self.modulo})"
+        return (
+            f"IntervalCounter("
+            f"initial_value={self.initial_value}, "
+            f"curr_value={self.curr_value}, "
+            f"modulo={self.modulo})"
+        )
 
     def __repr__(self) -> str:
         return self.__str__()

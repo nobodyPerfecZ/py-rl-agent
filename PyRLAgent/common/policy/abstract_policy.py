@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Union
 
 import numpy as np
-import torch.nn as nn
 import torch
+import torch.nn as nn
 
 from PyRLAgent.common.strategy.abstract_strategy import Strategy
 from PyRLAgent.util.observation import obs_to_tensor
@@ -14,8 +14,18 @@ class Policy(nn.Module, ABC):
     An abstract class representing a policy.
 
     A Policy is a fundamental component in reinforcement learning that defines how an agent selects actions
-    in response to environmental states. This abstract class provides a common interface for various policy
+    in response to states from an environment. This abstract class provides a common interface for various policy
     implementations.
+
+    Attributes:
+        model (nn.Module):
+            The PyTorch network (~ policy)
+
+        non_deterministic_strategy (Strategy):
+            The non-deterministic strategy for making decision or selecting actions if deterministic=False
+
+        deterministic_strategy (Strategy):
+            The deterministic strategy for making decision or selecting actions if deterministic=True
     """
 
     def __init__(
@@ -23,6 +33,7 @@ class Policy(nn.Module, ABC):
             model: nn.Module,
             non_deterministic_strategy: Strategy,
             deterministic_strategy: Strategy,
+            **kwargs
     ):
         super().__init__()
         self.model = model
@@ -31,22 +42,22 @@ class Policy(nn.Module, ABC):
 
     def freeze(self):
         """
-        Freeze the models parameters (:= requires_grad = False).
+        Freeze the models parameters (requires_grad=False).
         """
         for params in self.model.parameters():
             params.requires_grad = False
 
     def forward(self, observation_or_state: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         """
-        The Forward-Pass of the Policy Network.
+        The forward pass of the policy.
 
         Args:
             observation_or_state (Union[np.ndarray, torch.Tensor]):
-                Either the observation extracted by interacting with the environment or the preprocessed state
+                The input of the forward pass as the observation (np.ndarray) or preprocessed state (torch.Tensor)
 
         Returns:
             torch.Tensor:
-                Output of the Policy Network
+                Output of the policy
         """
         if isinstance(observation_or_state, torch.Tensor):
             # Case: State is given
@@ -57,6 +68,21 @@ class Policy(nn.Module, ABC):
 
     @abstractmethod
     def _predict(self, state: torch.Tensor, deterministic: bool) -> torch.Tensor:
+        """
+        Predicts the action given the policy and current preprocessed state.
+
+        Args:
+            state (torch.Tensor):
+                The preprocessed state by interacting with the environment
+
+            deterministic (bool):
+                Decides if the action should be selected according to the deterministic exploration strategy (:= True)
+                or the non-deterministic exploration strategy (:= False)
+
+        Returns:
+            torch.Tensor:
+                The selected action
+        """
         pass
 
     def predict(self, observation: np.ndarray, deterministic: bool) -> torch.Tensor:
@@ -82,23 +108,23 @@ class Policy(nn.Module, ABC):
 
     def update_strategy(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
         """
-        Updates the Non-deterministic strategy by the given Transition (s, a, r, s', done)
+        Updates the non-deterministic strategy by the given Transition (s, a, r, s', done)
 
         Args:
             state (np.ndarray):
-                Current state s
+                The current state s
 
             action (int):
-                Taken action a
+                The taken action a
 
             reward (float):
-                Reward r by taking action a from state s
+                The reward r by taking action a from state s
 
             next_state (np.ndarray):
-                Next state s' by taking action a from state s
+                The next state s' by taking action a from state s
 
             done (bool):
-                Is next state s' a terminal state or not
+                Signalized whether the end state is reached
         """
         self.non_deterministic_strategy.update(state, action, reward, next_state, done)
 

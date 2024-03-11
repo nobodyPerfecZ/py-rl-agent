@@ -1,4 +1,5 @@
 from collections import deque
+
 import torch
 
 from PyRLAgent.common.buffer.abstract_buffer import Buffer, Transition
@@ -6,18 +7,23 @@ from PyRLAgent.common.buffer.abstract_buffer import Buffer, Transition
 
 class RingBuffer(Buffer):
     """
-    A class for representing a circular replay buffer.
+    This class represents a circular replay buffer.
 
-    The fixed-size circular buffer stores a specified maximum number of Transitions (s, a, r, s', done).
-    When the buffer is full, adding new Transitions will overwrite the oldest items in a circular manner after the
-    LIFO (Last In, First Out) principle.
+    The circular replay buffer stores a specified maximum number of Transitions (s, a, r, s', done).
+
+    If the maximum number of Transitions are reached (~ full), adding new Transitions will overwrite the oldest
+    Transition in a circular manner after the LIFO (Last In, First Out) principle.
+
+    Attributes:
+        max_size (int):
+            The maximum number of Transitions allowed to be stored
     """
 
     def __init__(self, max_size: int):
-        if max_size < 1:
+        if max_size <= 0:
             raise ValueError(
-                "Illegal max_size!"
-                "The argument should be higher than or equal to 1!"
+                "Illegal max_size. "
+                " The argument should be >= 1!"
             )
         self.max_size = max_size
         self.memory = deque(maxlen=max_size)
@@ -28,8 +34,14 @@ class RingBuffer(Buffer):
     def full(self) -> bool:
         return len(self) == self.max_size
 
-    def filled(self, minimum_size: int) -> bool:
-        return len(self) >= minimum_size
+    def filled(self, min_size: int) -> bool:
+        if min_size <= 0 or min_size > self.max_size:
+            raise ValueError(
+                "Illegal min_size. "
+                "The argument should be 1 <= min_size <= max_size!"
+            )
+
+        return len(self) >= min_size
 
     def _push(self, transition: Transition):
         if self.full():
@@ -40,11 +52,18 @@ class RingBuffer(Buffer):
         self.memory.append(transition)
 
     def _sample(self, batch_size: int) -> list[Transition]:
+        if batch_size <= 0:
+            raise ValueError(
+                "Illegal batch_size. "
+                "The argument should be >= 1!"
+            )
+
         if not self.filled(batch_size):
             raise ValueError(
                 "Illegal call of sample()!"
                 "There are not enough transitions stored to sample from the buffer!"
             )
+
         indices = torch.randint(0, len(self), size=(batch_size,))
         return [self.memory[idx] for idx in indices]
 

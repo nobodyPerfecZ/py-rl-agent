@@ -1,4 +1,5 @@
 import unittest
+
 import numpy as np
 import torch
 import yaml
@@ -24,28 +25,33 @@ class TestRingBuffer(unittest.TestCase):
             self.replay_buffer.push(np.array([i]), i, i, np.array([i + 1]), False)
         self.replay_buffer.reset()
 
+        # Check if no transition is in the ring buffer
         self.assertEqual(0, len(self.replay_buffer))
 
     def test_full(self):
         """
         Tests the method full().
         """
+        # Check if the ring buffer is empty (full=False)
         self.assertFalse(self.replay_buffer.full())
 
         # Fill values
         for i in range(self.max_size):
             self.replay_buffer.push(np.array([i]), i, i, np.array([i + 1]), False)
 
+        # Check if the ring buffer is full (full=True)
         self.assertTrue(self.replay_buffer.full())
 
     def test_filled(self):
         """
         Tests the method filled().
         """
+        # Fill 3 values
         size = self.max_size - 2
         for i in range(size):
             self.replay_buffer.push(np.array([i]), i, i, np.array([i + 1]), False)
 
+        # Check if ring buffer is filled with 3 (filled=True) and 5 values (filled=False)
         self.assertTrue(self.replay_buffer.filled(size))
         self.assertFalse(self.replay_buffer.filled(self.max_size))
 
@@ -67,17 +73,17 @@ class TestRingBuffer(unittest.TestCase):
 
         samples = self.replay_buffer.sample(batch_size=size)
 
-        self.assertIsInstance(samples.states, torch.Tensor)
-        self.assertIsInstance(samples.actions, torch.Tensor)
-        self.assertIsInstance(samples.rewards, torch.Tensor)
-        self.assertIsInstance(samples.next_states, torch.Tensor)
-        self.assertIsInstance(samples.dones, torch.Tensor)
+        self.assertIsInstance(samples.state, torch.Tensor)
+        self.assertIsInstance(samples.action, torch.Tensor)
+        self.assertIsInstance(samples.reward, torch.Tensor)
+        self.assertIsInstance(samples.next_state, torch.Tensor)
+        self.assertIsInstance(samples.done, torch.Tensor)
 
-        self.assertEqual(size, len(samples.states))
-        self.assertEqual(size, len(samples.actions))
-        self.assertEqual(size, len(samples.rewards))
-        self.assertEqual(size, len(samples.next_states))
-        self.assertEqual(size, len(samples.dones))
+        self.assertEqual(size, len(samples.state))
+        self.assertEqual(size, len(samples.action))
+        self.assertEqual(size, len(samples.reward))
+        self.assertEqual(size, len(samples.next_state))
+        self.assertEqual(size, len(samples.done))
 
     def test_len(self):
         """
@@ -95,7 +101,7 @@ class TestRingBuffer(unittest.TestCase):
         """
         Tests the magic functions __getstate__ and __setstate__.
         """
-        # Lets push some values to the replay buffer
+        # Let push some values to the replay buffer
         self.replay_buffer.push(np.array([0]), 0, 0, np.array([1]), False)
         self.replay_buffer.push(np.array([1]), 1, 1, np.array([2]), False)
 

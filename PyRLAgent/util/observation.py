@@ -8,11 +8,11 @@ def obs_to_tensor(observation: np.ndarray) -> torch.Tensor:
 
     Args:
         observation (np.ndarray):
-            Numpy observation you want to convert
+            The observation to convert
 
     Returns:
         torch.Tensor:
-            observation as tensor object
+            The converted observation
     """
     if is_rgb_image_observation(observation):
         # Case: observation is a (batch of) rgb-images
@@ -30,7 +30,7 @@ def is_rgb_image_observation(observation: np.ndarray) -> bool:
 
     Args:
         observation (np.ndarray):
-            observation you want to check.
+            The observation you want to check.
 
     Returns:
         bool:
@@ -45,7 +45,6 @@ def is_rgb_image_observation(observation: np.ndarray) -> bool:
     else:
         # Case: Observation has unknown format
         raise ValueError(
-            "Unknown format of the observation!"
+            "Unknown format of the observation. "
             "The observation should be in a format of (B, H, W, C) for rgb-images!"
         )
-    return False

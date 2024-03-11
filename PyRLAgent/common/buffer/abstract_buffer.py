@@ -1,5 +1,5 @@
-from typing import NamedTuple
 from abc import ABC, abstractmethod
+from typing import NamedTuple, Union
 
 import numpy as np
 import torch
@@ -15,40 +15,43 @@ class Transition(NamedTuple):
         - r := reward for doing action a from state s
         - s' := next state after taking action a from state s
         - done := Is state s' a terminal state or not
-    """
-    state: np.ndarray
-    action: int
-    reward: float
-    next_state: np.ndarray
-    done: bool
 
+    Attributes:
+        state (Union[np.ndarray, torch.Tensor]):
+            The current state s
 
-class TransitionSample(NamedTuple):
-    """
-    A class for representing a sample of transitions in a reinforcement learning environment.
+        action (Union[np.ndarray, torch.Tensor]):
+            The taken action a
 
-    A TransitionSample (states, actions, rewards, next_states, dones) is used to capture the key elements of an agent
-    interaction with an environment as Tensor sample:
-        - states := current states
-        - actions := taken actions
-        - rewards := rewards for doing actions a from states s
-        - next_states := next states after taking actions a from states s
-        - dones := Are states s' terminal states or not
+        reward (Union[np.ndarray, torch.Tensor]):
+            The reward r for doing action a from state s
+
+        next_state (Union[np.ndarray, torch.Tensor]):
+            The next state s' after taking action a from state s
+
+        done (Union[bool, torch.Tensor]):
+            Signalizes whether the end state is reached
     """
-    states: torch.Tensor
-    actions: torch.Tensor
-    rewards: torch.Tensor
-    next_states: torch.Tensor
-    dones: torch.Tensor
+    state: Union[np.ndarray, torch.Tensor]
+    action: Union[int, torch.Tensor]
+    reward: Union[float, torch.Tensor]
+    next_state: Union[np.ndarray, torch.Tensor]
+    done: Union[bool, torch.Tensor]
 
 
 class Buffer(ABC):
     """
     An abstract class representing a buffer for storing and sampling data.
 
-    A buffer is used to collect and manage data samples, such as transitions, for training reinforcement learning agents.
+    A buffer is used to collect and manage data samples, such as transitions, for training reinforcement learning
+    agents.
+
     Concrete implementations of buffers should inherit from this base class and implement the required methods.
     """
+
+    @abstractmethod
+    def __init__(self, **kwargs):
+        pass
 
     @abstractmethod
     def reset(self):
@@ -69,82 +72,90 @@ class Buffer(ABC):
         pass
 
     @abstractmethod
-    def filled(self, minimum_size: int) -> bool:
+    def filled(self, min_size: int) -> bool:
         """
-        Returns True if the replay buffer has at least minimum_size transitions stored.
+        Returns True if the replay buffer has at least min_size transitions stored.
+
+        Args:
+            min_size (int):
+                The minimum size of Transitions
 
         Returns:
             bool:
-                True if replay buffer has at least minimum_size transitions stored
+                True if replay buffer has at least min_size transitions stored
         """
         pass
 
     @abstractmethod
     def _push(self, transition: Transition):
+        """
+        Pushes a Transition (s, a, r, s', done) to the replay buffer.
+
+        Args:
+            transition (Transition):
+                The transition to push to the replay buffer
+        """
         pass
 
-    def push(
-            self,
-            state: np.ndarray,
-            action: int,
-            reward: float,
-            next_state: np.ndarray,
-            done: bool
-    ):
+    def push(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
         """
-        Push a Transition (s, a, r, s', done) to the replay buffer.
+        Pushes a Transition (s, a, r, s', done) to the replay buffer.
 
         Args:
             state (np.ndarray):
-                Current state s
+                The current state s
 
             action (int):
-                Taken action a
+                The taken action a
 
             reward (float):
-                Reward r for taken action a from state s
+                The reward r for taken action a from state s
 
             next_state (np.ndarray):
-                Next state s' for taken action a from state s
+                The next state s' for taken action a from state s
 
             done (bool):
-                Is next state s' a terminal state or not
+                Signalizes whether the end state is reached
         """
         return self._push(Transition(state, action, reward, next_state, done))
 
     @abstractmethod
     def _sample(self, batch_size: int) -> list[Transition]:
-        pass
-
-    def sample(self, batch_size: int) -> TransitionSample:
         """
         Samples a list of transitions from the replay buffer.
 
         Args:
             batch_size (int):
-                Number of transitions to sample
+                The number of transitions to sample
 
         Returns:
-            TransitionSample:
-                Sampled transitions as pytorch tensors
+            list[Transition]:
+                The list of sampled Transitions
+        """
+        pass
+
+    def sample(self, batch_size: int) -> Transition:
+        """
+        Samples a batch of transitions from the replay buffer.
+
+        Args:
+            batch_size (int):
+                The number of transitions to sample
+
+        Returns:
+            Transition:
+                The sampled transition as batches of PyTorch Tensors
         """
         samples = self._sample(batch_size)
 
-        # Convert list[Transition] to TransitionSample
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-        for t in samples:
-            states += [t.state]
-            actions += [t.action]
-            rewards += [t.reward]
-            next_states += [t.next_state]
-            dones += [t.done]
+        # Convert list[Transition] to a single Transition with matrices
+        states = torch.tensor(np.array([t.state for t in samples])).to(dtype=torch.float32)
+        actions = torch.tensor(np.array([t.action for t in samples])).to(dtype=torch.int64)
+        rewards = torch.tensor(np.array([t.reward for t in samples])).to(dtype=torch.float32)
+        next_states = torch.tensor(np.array([t.next_state for t in samples])).to(dtype=torch.float32)
+        dones = torch.tensor(np.array([t.done for t in samples])).to(dtype=torch.bool)
 
-        states = torch.from_numpy(np.array(states)).to(dtype=torch.float32)
-        actions = torch.from_numpy(np.array(actions)).to(dtype=torch.int64)
-        rewards = torch.from_numpy(np.array(rewards)).to(dtype=torch.float32)
-        next_states = torch.from_numpy(np.array(next_states)).to(dtype=torch.float32)
-        dones = torch.from_numpy(np.array(dones)).to(dtype=torch.bool)
-        return TransitionSample(states, actions, rewards, next_states, dones)
+        return Transition(states, actions, rewards, next_states, dones)
 
     @abstractmethod
     def __len__(self) -> int:

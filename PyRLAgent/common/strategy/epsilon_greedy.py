@@ -1,4 +1,5 @@
-from abc import ABC, abstractmethod
+from abc import ABC
+
 import numpy as np
 import torch
 
@@ -13,24 +14,32 @@ class EpsilonGreedy(Strategy, ABC):
     With probability epsilon, it explores by selecting a random action, and with probability 1 - epsilon,
     it exploits by selecting the action with the highest estimated state-value function (q_values),
     given the current observation.
+
+    Attributes:
+        epsilon_min (float):
+            The minimum value of epsilon
+
+        epsilon_max (float):
+            The maximum value of epsilon (~ start value)
     """
 
     def __init__(self, epsilon_min: float, epsilon_max: float):
         if 0.0 > epsilon_min or 1.0 < epsilon_min:
             raise ValueError(
-                "Illegal epsilon_min!"
-                "The argument should be in between of 0.0 (inclusive) and 1.0 (inclusive)!"
+                "Illegal epsilon_min. "
+                "The argument should be 0.0 <= epsilon_min <= 1.0!"
             )
         if 0.0 > epsilon_max or 1.0 < epsilon_max:
             raise ValueError(
-                "Illegal epsilon_max!"
-                "The argument should be in between of 0.0 (inclusive) and 1.0 (inclusive)!"
+                "Illegal epsilon_max. "
+                "The argument should be 0.0 <= epsilon_max <= 1.0!"
             )
         if epsilon_min > epsilon_max:
             raise ValueError(
-                "Illegal epsilon_min!"
-                "The argument should be lower equal to epsilon_max!"
+                "Illegal epsilon_min. "
+                "The argument should be epsilon_min <= epsilon_max!"
             )
+
         self.epsilon_min = epsilon_min
         self.epsilon_max = epsilon_max
         self.epsilon = epsilon_max
@@ -48,8 +57,8 @@ class EpsilonGreedy(Strategy, ABC):
     def __eq__(self, other) -> bool:
         if isinstance(other, EpsilonGreedy):
             return self.epsilon_min == other.epsilon_min and \
-                   self.epsilon_max == other.epsilon_max and \
-                   self.epsilon == other.epsilon
+                self.epsilon_max == other.epsilon_max and \
+                self.epsilon == other.epsilon
         raise NotImplementedError
 
     def __getstate__(self) -> dict:
@@ -73,10 +82,27 @@ class LinearDecayEpsilonGreedy(EpsilonGreedy):
     linearly decays it over time. It balances exploration and exploitation from a reinforcement learning agent.
     With a high initial epsilon, it explores by selecting random actions,
     and over time, it reduces exploration to favor exploitation.
+
+    Attributes:
+        epsilon_min (float):
+                The minimum value of epsilon
+
+        epsilon_max (float):
+            The maximum value of epsilon (~ start value)
+
+        steps (int):
+            The number of steps required to reach epsilon_min
     """
 
     def __init__(self, epsilon_min: float, epsilon_max: float, steps: int):
         super().__init__(epsilon_min, epsilon_max)
+
+        if steps <= 0:
+            raise ValueError(
+                "Illegal steps. "
+                "The argument should be >= 1!"
+            )
+
         self.steps = steps
         self.momentum = (self.epsilon_max - self.epsilon_min) / self.steps
 
@@ -84,7 +110,13 @@ class LinearDecayEpsilonGreedy(EpsilonGreedy):
         self.epsilon = max(self.epsilon - self.momentum, self.epsilon_min)
 
     def __str__(self) -> str:
-        return f"LinearDecayEpsilonGreedy(epsilon_min={self.epsilon_min}, epsilon_max={self.epsilon_max}, epsilon={self.epsilon}, steps={self.steps})"
+        return (
+            f"LinearDecayEpsilonGreedy("
+            f"epsilon_min={self.epsilon_min},"
+            f" epsilon_max={self.epsilon_max},"
+            f" epsilon={self.epsilon},"
+            f" steps={self.steps})"
+        )
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -93,8 +125,8 @@ class LinearDecayEpsilonGreedy(EpsilonGreedy):
         if isinstance(other, LinearDecayEpsilonGreedy):
             is_eq = super().__eq__(other)
             return is_eq and \
-                   self.steps == other.steps and \
-                   self.momentum == other.momentum
+                self.steps == other.steps and \
+                self.momentum == other.momentum
         raise NotImplementedError
 
     def __getstate__(self) -> dict:
@@ -117,27 +149,49 @@ class ExponentialDecayEpsilonGreedy(EpsilonGreedy):
     exponentially decays it over time. It balances exploration and exploitation from a reinforcement learning agent.
     With a high initial epsilon, it explores by selecting random actions,
     and over time, it reduces exploration exponentially to favor exploitation.
+
+    Attributes:
+        epsilon_min (float):
+                The minimum value of epsilon
+
+        epsilon_max (float):
+            The maximum value of epsilon (~ start value)
+
+        decay_factor (int):
+            The decay factor for each update
     """
 
     def __init__(self, epsilon_min: float, epsilon_max: float, decay_factor: float):
         super().__init__(epsilon_min, epsilon_max)
+
+        if decay_factor <= 0.0 or decay_factor >= 1.0:
+            raise ValueError(
+                "Illegal decay_factor. "
+                "The argument should be 0.0 < decay_factor < 1.0!"
+            )
+
         self.decay_factor = decay_factor
 
     def update(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
         self.epsilon = max(self.epsilon * self.decay_factor, self.epsilon_min)
 
     def __str__(self) -> str:
-        return f"ExponentialDecayEpsilonGreedy(epsilon_min={self.epsilon_min}, epsilon_max={self.epsilon_max}, epsilon={self.epsilon}, decay_factor={self.decay_factor})"
+        return (
+            f"ExponentialDecayEpsilonGreedy("
+            f"epsilon_min={self.epsilon_min}, "
+            f"epsilon_max={self.epsilon_max}, "
+            f"epsilon={self.epsilon}, "
+            f"decay_factor={self.decay_factor})"
+        )
 
     def __repr__(self) -> str:
         return self.__str__()
 
     def __eq__(self, other):
-        print("Geht hier rein!")
         if isinstance(other, ExponentialDecayEpsilonGreedy):
             is_eq = super().__eq__(other)
             return is_eq and \
-                   self.decay_factor == other.decay_factor
+                self.decay_factor == other.decay_factor
         raise NotImplementedError
 
     def __getstate__(self) -> dict:

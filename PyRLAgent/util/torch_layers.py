@@ -1,4 +1,4 @@
-from typing import List
+from typing import Optional
 
 import torch.nn as nn
 
@@ -6,13 +6,12 @@ import torch.nn as nn
 def create_mlp(
         input_dim: int,
         output_dim: int,
-        architecture: List[int] = [],
-        activation_fn: List[nn.Module] = [],
+        architecture: Optional[list[int]],
+        activation_fn: Optional[list[nn.Module]],
         bias: bool = True
 ) -> nn.Sequential:
     """
-    This method constructs a feedforward neural network with the specified architecture, using the given
-    activation functions.
+    Creates a feed forward neural network with the specified architecture, using the given activation functions.
 
     Args:
         input_dim (int):
@@ -21,10 +20,10 @@ def create_mlp(
         output_dim (int):
             The dimension of the output data.
 
-        architecture (list[int]):
-            A list specifying the dimension of each hidden layer.
+        architecture (list[int], optional):
+            A list of the dimension for each hidden layer.
 
-        activation_fn (list[nn.Module]):
+        activation_fn (list[nn.Module], optional):
             A list of activation functions for each hidden layer.
 
         bias (bool, optional):
@@ -32,25 +31,14 @@ def create_mlp(
 
     Returns:
         nn.Sequential:
-            A Pytorch MLP model.
-
-    Raises:
-        ValueError:
-            If the number of activation functions does not match the number of hidden layers.
-
-    Example:
-        To create a simple neural network with two hidden layers, you can call this function like this:
-
-        >>> # Create the following neural network:
-        >>> # [nn.Linear(64, 128), nn.ReLU(), nn.Linear(128, 64), nn.Tanh(), nn.Linear(64, 10)]
-        >>> input_dim = 64
-        >>> output_dim = 10
-        >>> architecture = [128, 64]
-        >>> activation_fn = [nn.ReLU(), nn.Tanh()]
-        >>> model = create_architecture(input_dim, output_dim, architecture, activation_fn)
+            The feed forward neural network
     """
     if len(activation_fn) != len(architecture):
-        raise ValueError("The number of activation functions should match the number of (hidden) layers.")
+        raise ValueError("The number of activation functions should match the number of (hidden) layers!")
+    if architecture is None:
+        architecture = []
+    if activation_fn is None:
+        activation_fn = []
 
     # Create the deep neural network
     modules = []
