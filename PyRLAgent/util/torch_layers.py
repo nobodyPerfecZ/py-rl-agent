@@ -22,9 +22,10 @@ class DuelingNetwork(nn.Module):
 def create_mlp(
         input_dim: int,
         output_dim: int,
-        architecture: Optional[list[int]],
-        activation_fn: Optional[list[nn.Module]],
-        bias: bool = True
+        architecture: Optional[list[int]] = None,
+        activation_fn: Optional[nn.Module] = None,
+        output_activation_fn: Optional[nn.Module] = None,
+        bias: bool = True,
 ) -> nn.Module:
     """
     Creates a feed forward neural network with the specified architecture and activation functions.
@@ -37,10 +38,13 @@ def create_mlp(
             The dimension of the output data.
 
         architecture (list[int]):
-            A list of the output dimensions of each layer.
+            A list of the output dimensions of each hidden layer.
 
-        activation_fn (list[nn.Module], optional):
-            A list of activation functions of each layer.
+        activation_fn (nn.Module, optional):
+            The activation function of each hidden layer.
+        
+        output_activation_fn (nn.Module, optional):
+            The activation function after the output layer.
 
         bias (bool, optional):
             Whether to include bias terms in the network (default is True).
@@ -51,41 +55,35 @@ def create_mlp(
     """
     if architecture is None:
         architecture = []
-    if activation_fn is None:
-        activation_fn = []
-    if len(activation_fn) != len(architecture) and len(activation_fn) - 1 != len(architecture):
-        raise ValueError("The number of activation functions should match the number of (hidden) layers!")
 
     # Create the deep neural network
     modules = []
-    if len(architecture) > 0:
-        # Case: At least one hidden layer should be added to modules
-        modules += [nn.Linear(input_dim, architecture[0], bias=bias), activation_fn[0]]
+    for i in range(len(architecture)):
+        modules.append(nn.Linear(input_dim if i == 0 else architecture[i - 1], architecture[i], bias=bias))
+        if activation_fn:
+            modules.append(activation_fn)
 
-    for i in range(len(architecture) - 1):
-        # Case: More than one hidden layer should be added to modules
-        modules += [nn.Linear(architecture[i], architecture[i + 1], bias=bias), activation_fn[i + 1]]
+    # Add the output layer
+    modules.append(nn.Linear(architecture[-1] if architecture else input_dim, output_dim, bias=bias))
 
-    # Calculate the hidden dimension from the last hidden layer
-    hidden_dim = architecture[-1] if len(architecture) > 0 else input_dim
+    if output_activation_fn:
+        modules.append(output_activation_fn)
 
-    # Add the output layer to modules
-    if len(activation_fn) - 1 == len(architecture):
-        modules += [nn.Linear(hidden_dim, output_dim, bias=bias), activation_fn[-1]]
-    else:
-        modules += [nn.Linear(hidden_dim, output_dim, bias=bias)]
     return nn.Sequential(*modules)
 
 
 def create_dueling_mlp(
         input_dim: int,
         output_dim: int,
-        feature_architecture: Optional[list[int]],
-        feature_activation_fn: Optional[list[nn.Module]],
-        value_architecture: Optional[list[int]],
-        value_activation_fn: Optional[list[nn.Module]],
-        advantage_architecture: Optional[list[int]],
-        advantage_activation_fn: Optional[list[nn.Module]],
+        feature_architecture: Optional[list[int]] = None,
+        feature_activation_fn: Optional[nn.Module] = None,
+        feature_output_activation_fn: Optional[nn.Module] = None,
+        value_architecture: Optional[list[int]] = None,
+        value_activation_fn: Optional[nn.Module] = None,
+        value_output_activation_fn: Optional[nn.Module] = None,
+        advantage_architecture: Optional[list[int]] = None,
+        advantage_activation_fn: Optional[nn.Module] = None,
+        advantage_output_activation_fn: Optional[nn.Module] = None,
         bias: bool = True
 ) -> nn.Module:
     """
@@ -106,34 +104,38 @@ def create_dueling_mlp(
              A list of the output dimension of each hidden layer for f(s).
 
         feature_activation_fn (list[nn.Module], optional):
-             A list of the output dimension of each hidden layer for f(s).
+             The activation function of each hidden layer for f(s).
+
+        feature_output_activation_fn (nn.Module, optional):
+            The activation function after the output layer for f(s).
 
         value_architecture (list[int], optional):
              A list of the output dimension of each hidden layer for V(f(s)).
 
         value_activation_fn (list[nn.Module], optional):
-            A list of activation functions of each hidden layer for V(f(s)).
+           The activation function of each hidden layer for V(f(s)).
+
+        value_output_activation_fn (nn.Module, optional):
+            The activation function after the output layer for V(f(s)).
 
         advantage_architecture (list[int], optional):
             A list of output dimensions of each hidden layer for A(f(s), a).
 
         advantage_activation_fn (list[nn.Module], optional):
-            A list of activation functions of each hidden layer for A(f(s), a).
+            The activation function of each hidden layer for A(f(s), a).
+
+        advantage_output_activation_fn (nn.Module, optional):
+            The activation function after the output layer for A(f(s), a).
 
         bias (bool):
             Whether to include bias terms in the network (default is True).
 
     Returns:
-        tuple[nn.Sequential, nn.Sequential]:
-            values (nn.Sequential):
-                The neural network that approximate the value function V(s)
-
-            advantages (nn.Sequential):
-                The neural network that approximate the advantages A(s,a)
+        nn.Module:
+            The dueling network
     """
-    if ((feature_architecture is None or feature_architecture == []) and
-            (feature_activation_fn is None or feature_activation_fn == [])):
-        # Case: No feature extractor used
+    if not feature_architecture:
+        # Case: Use no feature extractor
         feature_output = input_dim
         feature_extractor = None
     else:
@@ -144,6 +146,7 @@ def create_dueling_mlp(
             output_dim=feature_output,
             architecture=feature_architecture[:-1],
             activation_fn=feature_activation_fn,
+            output_activation_fn=feature_output_activation_fn,
             bias=bias,
         )
 
@@ -153,6 +156,7 @@ def create_dueling_mlp(
         output_dim=1,
         architecture=value_architecture,
         activation_fn=value_activation_fn,
+        output_activation_fn=value_output_activation_fn,
         bias=bias,
     )
 
@@ -162,6 +166,7 @@ def create_dueling_mlp(
         output_dim=output_dim,
         architecture=advantage_architecture,
         activation_fn=advantage_activation_fn,
+        output_activation_fn=advantage_output_activation_fn,
         bias=bias,
     )
 

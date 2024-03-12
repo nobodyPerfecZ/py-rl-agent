@@ -18,11 +18,12 @@ class TestTorchLayers(unittest.TestCase):
         # [nn.Linear(64, 10, bias=True)]
         input_dim = 64
         output_dim = 10
-        architecture = []
-        activation_fn = []
+        architecture = None
+        activation_fn = None
+        output_activation_fn = None
         bias = False
 
-        model = create_mlp(input_dim, output_dim, architecture, activation_fn, bias)
+        model = create_mlp(input_dim, output_dim, architecture, activation_fn, output_activation_fn, bias)
         linear = model[0]
 
         self.assertIsInstance(model, nn.Sequential)
@@ -31,15 +32,17 @@ class TestTorchLayers(unittest.TestCase):
         self.assertEqual(output_dim, linear.out_features)
         self.assertIsNone(linear.bias)
 
-        # Create the minimal neural network:
+        # Create another minimal neural network:
         # [nn.Linear(64, 10, bias=True), nn.Tanh()]
         input_dim = 64
         output_dim = 10
-        architecture = []
-        activation_fn = [nn.Tanh()]
+        architecture = None
+        activation_fn = None
+        output_activation_fn = nn.Tanh()
+
         bias = False
 
-        model = create_mlp(input_dim, output_dim, architecture, activation_fn, bias)
+        model = create_mlp(input_dim, output_dim, architecture, activation_fn, output_activation_fn, bias)
         linear, activation = model[0], model[1]
 
         self.assertIsInstance(model, nn.Sequential)
@@ -50,18 +53,19 @@ class TestTorchLayers(unittest.TestCase):
         self.assertIsInstance(activation, nn.Tanh)
 
         # Create the following neural network:
-        # [nn.Linear(64, 128), nn.ReLU(), nn.Linear(128, 64), nn.Tanh(), nn.Linear(64, 10)]
+        # [nn.Linear(64, 128), nn.ReLU(), nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, 10) nn.Tanh()]
         input_dim = 64
         output_dim = 10
         architecture = [128, 64]
-        activation_fn = [nn.ReLU(), nn.Tanh()]
+        activation_fn = nn.ReLU()
+        output_activation_fn = nn.Tanh()
         bias = True
 
-        model = create_mlp(input_dim, output_dim, architecture, activation_fn, bias)
-        linear1, act1, linear2, act2, linear3 = model[0], model[1], model[2], model[3], model[4]
+        model = create_mlp(input_dim, output_dim, architecture, activation_fn, output_activation_fn, bias)
+        linear1, act1, linear2, act2, linear3, act3 = model[0], model[1], model[2], model[3], model[4], model[5]
 
         self.assertIsInstance(model, nn.Sequential)
-        self.assertEqual(5, len(model))
+        self.assertEqual(6, len(model))
 
         self.assertEqual(input_dim, linear1.in_features)
         self.assertEqual(architecture[0], linear1.out_features)
@@ -73,11 +77,13 @@ class TestTorchLayers(unittest.TestCase):
         self.assertEqual(architecture[1], linear2.out_features)
         self.assertIsNotNone(linear2.bias)
 
-        self.assertIsInstance(act2, nn.Tanh)
+        self.assertIsInstance(act2, nn.ReLU)
 
         self.assertEqual(architecture[1], linear3.in_features)
         self.assertEqual(output_dim, linear3.out_features)
         self.assertIsNotNone(linear3.bias)
+
+        self.assertIsInstance(act3, nn.Tanh)
 
     def test_create_dueling_mlp(self):
         """
@@ -86,12 +92,15 @@ class TestTorchLayers(unittest.TestCase):
         # Create the minimal neural network:
         input_dim = 64
         output_dim = 10
-        feature_architecture = []
-        feature_activation_fn = []
-        value_architecture = []
-        value_activation_fn = []
-        advantage_architecture = []
-        advantage_activation_fn = []
+        feature_architecture = None
+        feature_activation_fn = None
+        feature_output_activation_fn = None
+        value_architecture = None
+        value_activation_fn = None
+        value_output_activation_fn = None
+        advantage_architecture = None
+        advantage_activation_fn = None
+        advantage_output_activation_fn = None
         bias = False
 
         model = create_dueling_mlp(
@@ -99,10 +108,13 @@ class TestTorchLayers(unittest.TestCase):
             output_dim=output_dim,
             feature_architecture=feature_architecture,
             feature_activation_fn=feature_activation_fn,
+            feature_output_activation_fn=feature_output_activation_fn,
             value_architecture=value_architecture,
             value_activation_fn=value_activation_fn,
+            value_output_activation_fn=value_output_activation_fn,
             advantage_architecture=advantage_architecture,
             advantage_activation_fn=advantage_activation_fn,
+            advantage_output_activation_fn=advantage_output_activation_fn,
             bias=bias,
         )
 
@@ -127,11 +139,14 @@ class TestTorchLayers(unittest.TestCase):
         input_dim = 64
         output_dim = 10
         feature_architecture = [64]
-        feature_activation_fn = [nn.Tanh()]
+        feature_activation_fn = None
+        feature_output_activation_fn = nn.Tanh()
         value_architecture = [32]
-        value_activation_fn = [nn.ReLU()]
+        value_activation_fn = nn.ReLU()
+        value_output_activation_fn = None
         advantage_architecture = [32]
-        advantage_activation_fn = [nn.LeakyReLU()]
+        advantage_activation_fn = nn.LeakyReLU()
+        advantage_output_activation_fn = None
         bias = False
 
         model = create_dueling_mlp(
@@ -139,10 +154,13 @@ class TestTorchLayers(unittest.TestCase):
             output_dim=output_dim,
             feature_architecture=feature_architecture,
             feature_activation_fn=feature_activation_fn,
+            feature_output_activation_fn = feature_output_activation_fn,
             value_architecture=value_architecture,
             value_activation_fn=value_activation_fn,
+            value_output_activation_fn=value_output_activation_fn,
             advantage_architecture=advantage_architecture,
             advantage_activation_fn=advantage_activation_fn,
+            advantage_output_activation_fn=advantage_output_activation_fn,
             bias=bias,
         )
         feature_extractor = model.feature_extractor

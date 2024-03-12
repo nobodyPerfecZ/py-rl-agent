@@ -24,6 +24,7 @@ class TestDQN(unittest.TestCase):
                 "Q_max": 1,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),
+                "output_activation_fn": None,
                 "bias": True
             },
             strategy_type="linear-epsilon",

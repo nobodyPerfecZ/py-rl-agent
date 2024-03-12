@@ -18,6 +18,7 @@ class TestC51(unittest.TestCase):
                 "num_atoms": 51,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),
+                "output_activation_fn": None,
                 "bias": True
             },
             strategy_type="linear-epsilon",

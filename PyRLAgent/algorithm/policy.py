@@ -1,4 +1,4 @@
-from typing import Any, Type, Union
+from typing import Any, Optional, Type, Union
 
 import numpy as np
 import torch
@@ -24,8 +24,9 @@ class QNetwork(Policy):
             action_space: spaces.Space,
             Q_min: float,
             Q_max: float,
-            architecture: list[int],
-            activation_fn: Union[nn.Module, list[nn.Module]],
+            architecture: Optional[list[int]],
+            activation_fn: Optional[nn.Module],
+            output_activation_fn: Optional[nn.Module],
             bias: bool,
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
@@ -33,15 +34,12 @@ class QNetwork(Policy):
         self.Q_min = Q_min
         self.Q_max = Q_max
 
-        if isinstance(activation_fn, nn.Module):
-            # Case: All hidden layers should have the same activation function
-            activation_fn = [activation_fn for _ in range(len(architecture))]
-
         model = create_mlp(
             input_dim=np.prod(observation_space.shape).item(),
             output_dim=action_space.n,
             architecture=architecture,
             activation_fn=activation_fn,
+            output_activation_fn=output_activation_fn,
             bias=bias,
         )
 
@@ -90,12 +88,15 @@ class QDuelingNetwork(Policy):
             action_space: spaces.Space,
             Q_min: float,
             Q_max: float,
-            feature_architecture: list[int],
-            feature_activation_fn: Union[nn.Module, list[nn.Module]],
-            value_architecture: list[int],
-            value_activation_fn: Union[nn.Module, list[nn.Module]],
-            advantage_architecture: list[int],
-            advantage_activation_fn: Union[nn.Module, list[nn.Module]],
+            feature_architecture: Optional[list[int]],
+            feature_activation_fn: Optional[nn.Module],
+            feature_output_activation_fn: Optional[nn.Module],
+            value_architecture: Optional[list[int]],
+            value_activation_fn: Optional[nn.Module],
+            value_output_activation_fn: Optional[nn.Module],
+            advantage_architecture: Optional[list[int]],
+            advantage_activation_fn: Optional[nn.Module],
+            advantage_output_activation_fn: Optional[nn.Module],
             bias: bool,
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
@@ -103,27 +104,18 @@ class QDuelingNetwork(Policy):
         self.Q_min = Q_min
         self.Q_max = Q_max
 
-        if isinstance(value_activation_fn, nn.Module):
-            # Case: All hidden layers should have the same activation function
-            value_activation_fn = [value_activation_fn for _ in range(len(value_architecture))]
-
-        if isinstance(advantage_activation_fn, nn.Module):
-            # Case: All hidden layers should have the same activation function
-            advantage_activation_fn = [advantage_activation_fn for _ in range(len(advantage_architecture))]
-
-        if isinstance(feature_activation_fn, nn.Module):
-            # Case: All hidden layers should have the same activation function
-            feature_activation_fn = [feature_activation_fn for _ in range(len(feature_architecture))]
-
         model = create_dueling_mlp(
             input_dim=np.prod(observation_space.shape).item(),
             output_dim=action_space.n,
             feature_architecture=feature_architecture,
             feature_activation_fn=feature_activation_fn,
+            feature_output_activation_fn=feature_output_activation_fn,
             value_architecture=value_architecture,
             value_activation_fn=value_activation_fn,
+            value_output_activation_fn=value_output_activation_fn,
             advantage_architecture=advantage_architecture,
             advantage_activation_fn=advantage_activation_fn,
+            advantage_output_activation_fn=advantage_output_activation_fn,
             bias=bias,
         )
 
@@ -181,8 +173,9 @@ class QProbNetwork(Policy):
             Q_min: float,
             Q_max: float,
             num_atoms: int,
-            architecture: list[int],
-            activation_fn: Union[nn.Module, list[nn.Module]],
+            architecture: Optional[list[int]],
+            activation_fn: Optional[nn.Module],
+            output_activation_fn: Optional[list[int]],
             bias: bool,
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
@@ -194,15 +187,12 @@ class QProbNetwork(Policy):
         self.delta_Z = (self.Q_max - self.Q_min) / (self.num_atoms - 1)
         self.Z = torch.linspace(self.Q_min, self.Q_max, self.num_atoms)  # support values
 
-        if isinstance(activation_fn, nn.Module):
-            # Case: All hidden layers should have the same activation function
-            activation_fn = [activation_fn for _ in range(len(architecture))]
-
         model = create_mlp(
             input_dim=np.prod(observation_space.shape).item(),
             output_dim=action_space.n * num_atoms,
             architecture=architecture,
             activation_fn=activation_fn,
+            output_activation_fn=output_activation_fn,
             bias=bias,
         )
 

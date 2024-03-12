@@ -11,11 +11,14 @@ if __name__ == "__main__":
             "Q_min": -10,
             "Q_max": 10,
             "feature_architecture": [64],
-            "feature_activation_fn": nn.Tanh(),
+            "feature_activation_fn": None,
+            "feature_output_activation_fn": nn.Tanh(),
             "value_architecture": [64],
             "value_activation_fn": nn.Tanh(),
+            "value_output_activation_fn": None,
             "advantage_architecture": [64, 64],
             "advantage_activation_fn": nn.Tanh(),
+            "advantage_output_activation_fn": None,
             "bias": True
         },
         strategy_type="exp-epsilon",
@@ -38,7 +41,7 @@ if __name__ == "__main__":
         render_freq=50,
         gradient_steps=4,
     )
-    train_returns = dqn.fit(n_timesteps=1e3)
+    train_returns = dqn.fit(n_timesteps=1e4)
     eval_returns = dqn.eval(n_timesteps=1e4)
     print(train_returns)
     print(eval_returns)

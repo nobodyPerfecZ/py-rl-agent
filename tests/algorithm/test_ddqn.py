@@ -20,6 +20,7 @@ class TestDDQN(unittest.TestCase):
                 "Q_max": 1,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),
+                "output_activation_fn": None,
                 "bias": True
             },
             strategy_type="linear-epsilon",
@@ -58,6 +59,7 @@ class TestDDQN(unittest.TestCase):
         self.assertIsInstance(result, torch.Tensor)
         self.assertIsInstance(result.item(), float)
 
+
 class TestClippedDDQN(unittest.TestCase):
     """
     Tests the class ClippedDDQN.
@@ -72,6 +74,7 @@ class TestClippedDDQN(unittest.TestCase):
                 "Q_max": 1,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),
+                "output_activation_fn": None,
                 "bias": True
             },
             strategy_type="linear-epsilon",

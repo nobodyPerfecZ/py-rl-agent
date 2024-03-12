@@ -23,6 +23,7 @@ class TestQNetwork(unittest.TestCase):
             Q_max=1,
             architecture=[16, 32],
             activation_fn=nn.ReLU(),
+            output_activation_fn=None,
             bias=True,
             strategy_type="linear-epsilon",
             strategy_kwargs={"epsilon_min": 0.1, "epsilon_max": 1.0, "steps": 3},
