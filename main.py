@@ -1,15 +1,58 @@
+import matplotlib.pyplot as plt
 import torch.nn as nn
 
 from PyRLAgent.algorithm.ddqn import ClippedDDQN
+from PyRLAgent.algorithm.ppo import PPO
 
 if __name__ == "__main__":
     # For CartPole
-    dqn = ClippedDDQN(
+    ppo = PPO(
+        env_type="CartPole-v1",
+        policy_type="actor-critic",
+        policy_kwargs={
+            "actor_architecture": [128],
+            "actor_activation_fn": nn.Tanh(),
+            "actor_output_activation_fn": None,
+            "critic_architecture": [128],
+            "critic_activation_fn": nn.Tanh(),
+            "critic_output_activation_fn": None,
+            "bias": True
+        },
+        optimizer_type="adamw",
+        optimizer_kwargs={"lr": 1e-3},
+        lr_scheduler_type="linear-lr",
+        lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
+        clip_ratio=0.2,
+        batch_size=32,
+        steps_per_trajectory=16,
+        gamma=0.98,
+        gae_lambda=0.8,
+        vf_coef=0.5,
+        ent_coef=0.0,
+        render_freq=50,
+        gradient_steps=16,
+    )
+    # Train the agent
+    train_returns = ppo.fit(n_timesteps=1e5)
+    plt.plot(train_returns)
+    plt.title("Training - CartPole v1")
+    plt.ylabel("Returns")
+    plt.xlabel("Episodes")
+    plt.show()
+
+    # Evaluate the agent
+    eval_returns = ppo.eval(n_timesteps=1e4)
+    plt.plot(eval_returns)
+    plt.title("Evaluation - CartPole v1")
+    plt.ylabel("Returns")
+    plt.xlabel("Episodes")
+    plt.show()
+
+    # For CartPole
+    clipped_ddqn = ClippedDDQN(
         env_type="CartPole-v1",
         policy_type="q-dueling-net",
         policy_kwargs={
-            "Q_min": -10,
-            "Q_max": 10,
             "feature_architecture": [64],
             "feature_activation_fn": None,
             "feature_output_activation_fn": nn.Tanh(),
@@ -22,7 +65,7 @@ if __name__ == "__main__":
             "bias": True
         },
         strategy_type="exp-epsilon",
-        strategy_kwargs={"epsilon_min": 0.01, "epsilon_max": 1.0, "decay_factor": 0.995},
+        strategy_kwargs={"epsilon_min": 0.1, "epsilon_max": 1.0, "decay_factor": 0.95},
         replay_buffer_type="ring",
         replay_buffer_kwargs={"max_size": 15000},
         optimizer_type="adam",
@@ -41,7 +84,18 @@ if __name__ == "__main__":
         render_freq=50,
         gradient_steps=4,
     )
-    train_returns = dqn.fit(n_timesteps=1e4)
-    eval_returns = dqn.eval(n_timesteps=1e4)
-    print(train_returns)
-    print(eval_returns)
+    # Train the agent
+    train_returns = clipped_ddqn.fit(n_timesteps=1e4)
+    plt.plot(train_returns)
+    plt.title("Training - CartPole v1")
+    plt.ylabel("Returns")
+    plt.xlabel("Episodes")
+    plt.show()
+
+    # Evaluate the agent
+    eval_returns = clipped_ddqn.eval(n_timesteps=1e4)
+    plt.plot(eval_returns)
+    plt.title("Evaluation - CartPole v1")
+    plt.ylabel("Returns")
+    plt.xlabel("Episodes")
+    plt.show()

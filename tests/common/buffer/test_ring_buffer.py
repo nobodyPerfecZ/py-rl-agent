@@ -63,6 +63,28 @@ class TestRingBuffer(unittest.TestCase):
 
         self.assertEqual(1, len(self.replay_buffer))
 
+    def test_get(self):
+        """
+        Tests the method get().
+        """
+        size = self.max_size - 2
+        for i in range(self.max_size):
+            self.replay_buffer.push(np.array([i]), i, i, np.array([i + 1]), False)
+
+        samples = self.replay_buffer.get(batch_size=size)
+
+        self.assertIsInstance(samples.state, torch.Tensor)
+        self.assertIsInstance(samples.action, torch.Tensor)
+        self.assertIsInstance(samples.reward, torch.Tensor)
+        self.assertIsInstance(samples.next_state, torch.Tensor)
+        self.assertIsInstance(samples.done, torch.Tensor)
+
+        self.assertEqual(size, len(samples.state))
+        self.assertEqual(size, len(samples.action))
+        self.assertEqual(size, len(samples.reward))
+        self.assertEqual(size, len(samples.next_state))
+        self.assertEqual(size, len(samples.done))
+
     def test_sample(self):
         """
         Tests the method sample().

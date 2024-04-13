@@ -36,21 +36,6 @@ class Algorithm(ABC):
         pass
 
     @abstractmethod
-    def predict(self, **kwargs) -> torch.Tensor:
-        """
-        Predicts the next action a given the input.
-
-        Args:
-            **kwargs:
-                Arbitrary keyword arguments
-
-        Returns:
-            torch.Tensor:
-                The predicted action
-        """
-        pass
-
-    @abstractmethod
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
         """
         Fits the algorithm for a certain number of timesteps.

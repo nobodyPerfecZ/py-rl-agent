@@ -2,58 +2,73 @@ import copy
 import unittest
 
 import torch
-import torch.nn as nn
 import yaml
+from torch import nn
 
-from PyRLAgent.algorithm.dqn import DQN
+from PyRLAgent.algorithm.ppo import PPO
 
 
-class TestDQN(unittest.TestCase):
+class TestPPO(unittest.TestCase):
     """
-    Tests the class DQN.
+    Tests the class PPO.
     """
 
     def setUp(self) -> None:
         torch.manual_seed(0)
-        self.agent = DQN(
+        self.agent = PPO(
             env_type="CartPole-v1",
-            policy_type="q-net",
+            policy_type="actor-critic",
             policy_kwargs={
-                "architecture": [128],
-                "activation_fn": nn.Tanh(),
-                "output_activation_fn": None,
+                "actor_architecture": [128],
+                "actor_activation_fn": nn.Tanh(),
+                "actor_output_activation_fn": None,
+                "critic_architecture": [128],
+                "critic_activation_fn": nn.Tanh(),
+                "critic_output_activation_fn": None,
                 "bias": True
             },
-            strategy_type="linear-epsilon",
-            strategy_kwargs={"epsilon_min": 0.1, "epsilon_max": 1.0, "steps": 1000},
-            replay_buffer_type="ring",
-            replay_buffer_kwargs={"max_size": 10000},
-            optimizer_type="adam",
-            optimizer_kwargs={"lr": 5e-4},
+            optimizer_type="adamw",
+            optimizer_kwargs={"lr": 1e-3},
             lr_scheduler_type="linear-lr",
-            lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.3, "total_iters": 1000},
-            loss_type="huber",
-            loss_kwargs={},
-            max_gradient_norm=100,
-            batch_size=16,
-            tau=5e-3,
-            gamma=0.99,
-            target_freq=1,
-            train_freq=1,
+            lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
+            clip_ratio=0.2,
+            batch_size=32,
+            steps_per_trajectory=16,
+            gamma=0.98,
+            gae_lambda=0.8,
+            vf_coef=0.5,
+            ent_coef=0.0,
             render_freq=50,
-            gradient_steps=1,
+            gradient_steps=16,
         )
+
+    def test_compute_gae(self):
+        """
+        Tests the method compute_loss().
+        """
+        advantages, targets = self.agent.compute_gae(
+            rewards=torch.rand(size=(32 * 16,)),
+            dones=torch.randint(low=0, high=2, size=(32 * 16,)),
+            values=torch.rand(size=(32 * 16,)),
+        )
+
+        self.assertIsInstance(advantages, torch.Tensor)
+        self.assertEqual((32 * 16,), advantages.shape)
+
+        self.assertIsInstance(targets, torch.Tensor)
+        self.assertEqual((32 * 16,), targets.shape)
 
     def test_compute_loss(self):
         """
         Tests the method compute_loss().
         """
         result = self.agent.compute_loss(
-            states=torch.rand(size=(64, 4)),
-            actions=torch.randint(low=0, high=2, size=(64,)),
-            rewards=torch.rand(size=(64,)),
-            next_states=torch.rand(size=(64, 4)),
-            dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
+            states=torch.rand(size=(32 * 16, 4)),
+            actions=torch.randint(low=0, high=2, size=(32 * 16,)),
+            log_probs=torch.rand(size=(32 * 16,)),
+            advantages=torch.rand(size=(32 * 16,)),
+            values=torch.rand(size=(32 * 16,)),
+            targets=torch.rand(size=(32 * 16,)),
         )
 
         self.assertIsInstance(result, torch.Tensor)
@@ -63,9 +78,9 @@ class TestDQN(unittest.TestCase):
         """
         Tests the method fit().
         """
-        old_params = copy.deepcopy(self.agent.q_net.state_dict())
+        old_params = copy.deepcopy(self.agent.model.state_dict())
         self.agent.fit(n_timesteps=1e4)
-        new_params = copy.deepcopy(self.agent.q_net.state_dict())
+        new_params = copy.deepcopy(self.agent.model.state_dict())
 
         # Check if the weights gets updated
         self.assertTrue(
@@ -79,9 +94,9 @@ class TestDQN(unittest.TestCase):
         """
         Tests the method eval().
         """
-        old_params = copy.deepcopy(self.agent.q_net.state_dict())
+        old_params = copy.deepcopy(self.agent.model.state_dict())
         self.agent.eval(n_timesteps=1e3)
-        new_params = copy.deepcopy(self.agent.q_net.state_dict())
+        new_params = copy.deepcopy(self.agent.model.state_dict())
 
         # Check if the weights gets not updated
         self.assertTrue(

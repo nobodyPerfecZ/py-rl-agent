@@ -32,7 +32,6 @@ class TestC51(unittest.TestCase):
             loss_type="ce-logits",
             loss_kwargs={},
             max_gradient_norm=100,
-            learning_starts=64,
             batch_size=64,
             tau=5e-3,
             gamma=0.99,

@@ -5,25 +5,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from gymnasium import spaces
+from gymnasium.spaces import Discrete
 
-from PyRLAgent.common.policy.abstract_policy import Policy
+from PyRLAgent.common.network.actor_critic import create_actor_critic_mlp
+from PyRLAgent.common.network.dueling import create_dueling_mlp
+from PyRLAgent.common.network.mlp import create_mlp
+from PyRLAgent.common.policy.abstract_policy import ActorCriticPolicy, DeterministicPolicy
 from PyRLAgent.common.strategy.abstract_strategy import Strategy
 from PyRLAgent.common.strategy.epsilon_greedy import ExponentialDecayEpsilonGreedy, LinearDecayEpsilonGreedy
 from PyRLAgent.common.strategy.greedy import Greedy
 from PyRLAgent.common.strategy.random import Random
 from PyRLAgent.common.strategy.ucb import UCB
 from PyRLAgent.util.mapping import get_value
-from PyRLAgent.util.torch_layers import create_dueling_mlp, create_mlp
 
 
-class QNetwork(Policy):
+class QNetwork(DeterministicPolicy):
 
     def __init__(
             self,
             observation_space: spaces.Space,
             action_space: spaces.Space,
-            Q_min: float,
-            Q_max: float,
             architecture: Optional[list[int]],
             activation_fn: Optional[nn.Module],
             output_activation_fn: Optional[nn.Module],
@@ -31,9 +32,6 @@ class QNetwork(Policy):
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
     ):
-        self.Q_min = Q_min
-        self.Q_max = Q_max
-
         model = create_mlp(
             input_dim=np.prod(observation_space.shape).item(),
             output_dim=action_space.n,
@@ -80,14 +78,12 @@ class QNetwork(Policy):
             return self.non_deterministic_strategy.choose_action(state, q_values)
 
 
-class QDuelingNetwork(Policy):
+class QDuelingNetwork(DeterministicPolicy):
 
     def __init__(
             self,
             observation_space: spaces.Space,
             action_space: spaces.Space,
-            Q_min: float,
-            Q_max: float,
             feature_architecture: Optional[list[int]],
             feature_activation_fn: Optional[nn.Module],
             feature_output_activation_fn: Optional[nn.Module],
@@ -101,9 +97,6 @@ class QDuelingNetwork(Policy):
             strategy_type: Union[str, Type[Strategy]],
             strategy_kwargs: dict[str, Any],
     ):
-        self.Q_min = Q_min
-        self.Q_max = Q_max
-
         model = create_dueling_mlp(
             input_dim=np.prod(observation_space.shape).item(),
             output_dim=action_space.n,
@@ -156,7 +149,7 @@ class QDuelingNetwork(Policy):
             return self.non_deterministic_strategy.choose_action(state, q_values)
 
 
-class QCNNetwork(Policy):
+class QCNNetwork(DeterministicPolicy):
     # TODO: Implement here
 
     def _predict(self, observation: torch.Tensor, deterministic: str) -> torch.Tensor:
@@ -164,7 +157,7 @@ class QCNNetwork(Policy):
         pass
 
 
-class QProbNetwork(Policy):
+class QProbNetwork(DeterministicPolicy):
 
     def __init__(
             self,
@@ -250,3 +243,46 @@ class QProbNetwork(Policy):
         logits = logits.view(logits.shape[0], self.num_actions, self.num_atoms)
 
         return logits
+
+
+class ActorCriticNetwork(ActorCriticPolicy):
+
+    def __init__(
+            self,
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            actor_architecture: Optional[list[int]],
+            actor_activation_fn: Optional[list[int]],
+            actor_output_activation_fn: Optional[list[int]],
+            critic_architecture: Optional[list[int]],
+            critic_activation_fn: Optional[list[int]],
+            critic_output_activation_fn: Optional[list[int]],
+            bias: bool,
+    ):
+        input_dim = observation_space.shape[0]
+
+        if isinstance(action_space, Discrete):
+            # Case: Discrete action space
+            output_dim = action_space.n
+            discrete = True
+        else:
+            # Case: Continuous action space
+            output_dim = action_space.shape[0]
+            discrete = False
+
+        model = create_actor_critic_mlp(
+            discrete=discrete,
+            input_dim=input_dim,
+            output_dim=output_dim,
+            actor_architecture=actor_architecture,
+            actor_activation_fn=actor_activation_fn,
+            actor_output_activation_fn=actor_output_activation_fn,
+            critic_architecture=critic_architecture,
+            critic_activation_fn=critic_activation_fn,
+            critic_output_activation_fn=critic_output_activation_fn,
+            bias=bias,
+        )
+
+        super().__init__(
+            model=model
+        )

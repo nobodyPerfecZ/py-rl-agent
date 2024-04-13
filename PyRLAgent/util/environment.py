@@ -1,29 +1,17 @@
-from typing import Union
-
 import gymnasium as gym
 
 
-def get_env(name: str, return_render: bool = False) -> Union[gym.Env, tuple[gym.Env, gym.Env]]:
+def get_env(name: str, **env_kwargs) -> gym.Env:
     """
-    Creates a Gymnasium environment given the name.
+    Creates a Gymnasium environment given the name and kwargs.
 
     Args:
         name (str):
             The name of the Gymnasium environment
 
-        return_render (bool):
-            Controls whether to return a rendered environment
-
     Returns:
-        gym.Env | tuple[gym.Env, gym.Env]:
-            env (gym.Env):
-                The Gymnasium environment (without rendering)
-
-            render_env (gym.Env, optional):
-                The Gymnasium environment with rendering
+        gym.Env:
+            The Gymnasium environment with the specified kwargs
     """
-    env = gym.make(name, render_mode="rgb_array")
-    if return_render:
-        render_env = gym.make(name, render_mode="human")
-        return env, render_env
+    env = gym.make(name, **env_kwargs)
     return env

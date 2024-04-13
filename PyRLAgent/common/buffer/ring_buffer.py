@@ -23,7 +23,7 @@ class RingBuffer(Buffer):
         if max_size <= 0:
             raise ValueError(
                 "Illegal max_size. "
-                " The argument should be >= 1!"
+                "The argument should be >= 1!"
             )
         self.max_size = max_size
         self.memory = deque(maxlen=max_size)
@@ -51,13 +51,26 @@ class RingBuffer(Buffer):
         # Append a single transition to the memory
         self.memory.append(transition)
 
+    def _get(self, batch_size: int) -> list[Transition]:
+        if batch_size <= 0:
+            raise ValueError(
+                "Illegal batch_size. "
+                "The argument should be >= 1!"
+            )
+        if not self.filled(batch_size):
+            raise ValueError(
+                "Illegal call of get()!"
+                "There are not enough transitions stored to return from the buffer!"
+            )
+
+        return [self.memory[idx] for idx in range(batch_size)]
+
     def _sample(self, batch_size: int) -> list[Transition]:
         if batch_size <= 0:
             raise ValueError(
                 "Illegal batch_size. "
                 "The argument should be >= 1!"
             )
-
         if not self.filled(batch_size):
             raise ValueError(
                 "Illegal call of sample()!"
@@ -66,6 +79,24 @@ class RingBuffer(Buffer):
 
         indices = torch.randint(0, len(self), size=(batch_size,))
         return [self.memory[idx] for idx in indices]
+
+    def _get_trajectories(self, batch_size: int, steps_per_trajectory: int) -> list[Transition]:
+        if batch_size <= 0:
+            raise ValueError(
+                "Illegal batch_size. "
+                "The argument should be >= 1!"
+            )
+        if steps_per_trajectory <= 0:
+            raise ValueError(
+                "Illegal steps_per_trajectory. "
+                "The argument should be >= 1!"
+            )
+        if not self.filled(batch_size * steps_per_trajectory):
+            raise ValueError(
+                "Illegal call of get_trajectories()!"
+                "There are not enough transitions stored to return from the buffer!"
+            )
+        return [self.memory[idx] for idx in range(batch_size * steps_per_trajectory)]
 
     def __len__(self) -> int:
         return self.memory.__len__()

@@ -98,9 +98,6 @@ class DDQN(DQN):
             a_next = self.q_net.forward(next_states).argmax(dim=1)
             q_targets = rewards + ~dones * self.gamma * Q_next.gather(dim=1, index=a_next.unsqueeze(1)).squeeze()
 
-            # Clip the target q-values
-            q_targets = torch.clamp_(q_targets, min=self.target_q_net.Q_min, max=self.target_q_net.Q_max)
-
         # Calculate the predicted q-values
         Q = self.q_net.forward(states)
         q_values = Q.gather(dim=1, index=actions.unsqueeze(1)).squeeze()
@@ -207,9 +204,6 @@ class ClippedDDQN(DDQN):
             q_targets1 = Q_next1.gather(dim=1, index=a_next1.unsqueeze(1)).squeeze()
             q_targets2 = Q_next2.gather(dim=1, index=a_next2.unsqueeze(1)).squeeze()
             q_targets = rewards + ~dones * self.gamma * torch.min(q_targets1, q_targets2)
-
-            # Clip the target q-values
-            q_targets = torch.clamp_(q_targets, min=self.target_q_net.Q_min, max=self.target_q_net.Q_max)
 
         # Calculate the predicted q-values
         Q = self.q_net.forward(states)

@@ -1,15 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
+from torch import Tensor
+from torch.distributions import Distribution
 
+from PyRLAgent.common.network.actor_critic import ActorCriticNetwork
 from PyRLAgent.common.strategy.abstract_strategy import Strategy
 from PyRLAgent.util.observation import obs_to_tensor
 
 
-class Policy(nn.Module, ABC):
+class DeterministicPolicy(nn.Module, ABC):
     """
     An abstract class representing a policy.
 
@@ -148,3 +151,125 @@ class Policy(nn.Module, ABC):
         super().__setstate__(state)
         self.non_deterministic_strategy = state["non_deterministic_strategy"]
         self.deterministic_strategy = state["deterministic_strategy"]
+
+
+class StochasticPolicy(nn.Module, ABC):
+    pass
+
+
+class ActorCriticPolicy(nn.Module, ABC):
+    """
+    An abstract class representing a stochastic policy.
+
+    A Policy is a fundamental component in reinforcement learning that defines how an agent selects actions
+    in response to states from an environment. This abstract class provides a common interface for various policy
+    implementations.
+
+    Attributes:
+        model (ActorCriticNetwork):
+            The PyTorch network to sample actions (~actor) and to compute baseline values (~critic)
+    """
+
+    def __init__(
+            self,
+            model: ActorCriticNetwork,
+            **kwargs
+    ):
+        super().__init__()
+        self.model = model
+
+    def forward(
+            self,
+            observation_or_state: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+    ) -> Union[tuple[Distribution, torch.Tensor], tuple[Distribution, torch.Tensor, torch.Tensor]]:
+        """
+        The forward pass of the policy.
+
+        Args:
+            observation_or_state (np.ndarray | torch.Tensor):
+                The observation (np.ndarray) or preprocessed state (torch.Tensor) of the environment
+
+            action (np.ndarray | torch.Tensor):
+                The selected actions
+
+        Returns:
+            tuple[Distribution, Optional[torch.Tensor], Tensor]:
+                Output of the policy
+        """
+        if not isinstance(observation_or_state, torch.Tensor):
+            observation_or_state = obs_to_tensor(observation_or_state)
+        if not isinstance(action, torch.Tensor):
+            action = obs_to_tensor(action)
+        return self.model.forward(observation_or_state, action)
+
+    def _predict(
+            self,
+            observation: torch.Tensor
+    ) -> tuple[Distribution, torch.Tensor, torch.Tensor, torch.Tensor]:
+        # Get the probability distribution over all actions
+        pi = self.model.actor.distribution(observation)
+
+        # Sample the next action
+        action = pi.sample()
+
+        # Compute the log probability pi(a | s)
+        log_prob = self.model.actor.log_prob(pi, action)
+
+        # Compute the state value V(s)
+        value = self.model.critic(observation)
+
+        return pi, action, log_prob, value
+
+    def predict(
+            self,
+            observation: np.ndarray,
+            return_all: bool = False,
+    ) -> Union[torch.Tensor, tuple[Distribution, torch.Tensor, torch.Tensor, torch.Tensor]]:
+        """
+        Predict the action given the policy network and the current observation.
+
+        If return_all is False then it will only return the action.
+
+        Args:
+            observation (np.ndarray):
+                Observation extracted by interacting with the environment
+
+            return_all (bool):
+                Controls whether to only return the action or other necessary information
+
+        Returns:
+            Union[torch.Tensor, tuple[Distribution, torch.Tensor, torch.Tensor, torch.Tensor]]:
+                pi (Distribution):
+                    The probability distribution over all actions
+
+                action (torch.Tensor):
+                    The selected action a
+
+                log_prob (torch.Tensor):
+                    The log probability pi(a | s)
+
+                value (torch.Tensor):
+                    The state-value V(s)
+        """
+        with torch.no_grad():
+            pi, action, log_prob, value = self._predict(obs_to_tensor(observation))
+
+        if return_all:
+            return pi, action, log_prob, value
+        return action
+
+    def __str__(self):
+        header = f"{self.__class__.__name__}("
+        model_line = f"(model): {self.model.__str__()},"
+        end = ")"
+        return "\n".join([header, model_line, end])
+
+    def __getstate__(self) -> dict:
+        """ Magic function to save a custom class as yaml file. """
+        state = super().__getstate__()
+        return state
+
+    def __setstate__(self, state: dict):
+        """ Magic function to load a custom class from yaml file. """
+        super().__setstate__(state)

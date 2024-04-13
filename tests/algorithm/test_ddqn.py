@@ -16,8 +16,6 @@ class TestDDQN(unittest.TestCase):
             env_type="CartPole-v1",
             policy_type="q-net",
             policy_kwargs={
-                "Q_min": -1,
-                "Q_max": 1,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),
                 "output_activation_fn": None,
@@ -34,7 +32,6 @@ class TestDDQN(unittest.TestCase):
             loss_type="huber",
             loss_kwargs={},
             max_gradient_norm=100,
-            learning_starts=64,
             batch_size=64,
             tau=5e-3,
             gamma=0.99,
@@ -70,8 +67,6 @@ class TestClippedDDQN(unittest.TestCase):
             env_type="CartPole-v1",
             policy_type="q-net",
             policy_kwargs={
-                "Q_min": -1,
-                "Q_max": 1,
                 "architecture": [128],
                 "activation_fn": nn.Tanh(),
                 "output_activation_fn": None,
@@ -88,7 +83,6 @@ class TestClippedDDQN(unittest.TestCase):
             loss_type="huber",
             loss_kwargs={},
             max_gradient_norm=100,
-            learning_starts=64,
             batch_size=64,
             tau=5e-3,
             gamma=0.99,

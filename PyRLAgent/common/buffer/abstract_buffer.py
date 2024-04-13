@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Union
+from typing import NamedTuple, Optional, Union
 
 import numpy as np
 import torch
@@ -9,12 +9,15 @@ class Transition(NamedTuple):
     """
     A class for representing a Transition in a reinforcement learning environment.
 
-    A Transition (s, a, r, s', done) is used to capture the key elements of an agent interaction with an environment:
+    A Transition (s, a, r, s', done, log_prob) is used to capture the key elements of an agent interaction with an
+    environment:
         - s := current state
         - a := taken action
         - r := reward for doing action a from state s
         - s' := next state after taking action a from state s
         - done := Is state s' a terminal state or not
+        - log_prob := log probability of p(a | s)
+        - value := state-value V(s)
 
     Attributes:
         state (Union[np.ndarray, torch.Tensor]):
@@ -31,12 +34,20 @@ class Transition(NamedTuple):
 
         done (Union[bool, torch.Tensor]):
             Signalizes whether the end state is reached
+
+        log_prob(Union[float, torch.Tensor], optional):
+            The log probability p(a | s)
+
+        value(Union[float, torch.Tensor], optional):
+            The state-value V(s)
     """
     state: Union[np.ndarray, torch.Tensor]
     action: Union[int, torch.Tensor]
     reward: Union[float, torch.Tensor]
     next_state: Union[np.ndarray, torch.Tensor]
     done: Union[bool, torch.Tensor]
+    log_prob: Optional[Union[float, torch.Tensor]] = None
+    value: Optional[Union[float, torch.Tensor]] = None
 
 
 class Buffer(ABC):
@@ -89,7 +100,7 @@ class Buffer(ABC):
     @abstractmethod
     def _push(self, transition: Transition):
         """
-        Pushes a Transition (s, a, r, s', done) to the replay buffer.
+        Pushes a Transition (s, a, r, s', done, log_prob, value) to the replay buffer.
 
         Args:
             transition (Transition):
@@ -97,9 +108,18 @@ class Buffer(ABC):
         """
         pass
 
-    def push(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
+    def push(
+            self,
+            state: np.ndarray,
+            action: int,
+            reward: float,
+            next_state: np.ndarray,
+            done: bool,
+            log_prob: Optional[Union[float, torch.Tensor]] = None,
+            value: Optional[Union[float, torch.Tensor]] = None,
+    ):
         """
-        Pushes a Transition (s, a, r, s', done) to the replay buffer.
+        Pushes a Transition (s, a, r, s', done, log_prob, value) to the replay buffer.
 
         Args:
             state (np.ndarray):
@@ -116,8 +136,60 @@ class Buffer(ABC):
 
             done (bool):
                 Signalizes whether the end state is reached
+            
+            log_prob (Union[float, torch.Tensor], optional):
+                The log probability of p(a | s)
+
+            value (Union[float, torch.Tensor], optional):
+                The state-value V(s)
         """
-        return self._push(Transition(state, action, reward, next_state, done))
+        return self._push(Transition(state, action, reward, next_state, done, log_prob, value))
+
+    @abstractmethod
+    def _get(self, batch_size: int) -> list[Transition]:
+        """
+        Returns the first [0, ..., batch_size - 1] transitions from the replay buffer.
+
+        Args:
+            batch_size (int):
+                The number of transitions to consider
+
+        Returns:
+            list[Transition]:
+                The first [0, ..., batch_size - 1] transitions
+        """
+        pass
+
+    def get(self, batch_size: int) -> Transition:
+        """
+        Returns the first [0, ..., batch_size - 1] transitions from the replay buffer.
+
+        Args:
+            batch_size (int):
+                The number of transitions to consider
+
+        Returns:
+            Transition:
+                The transition as batch of PyTorch Tensors
+        """
+        samples = self._get(batch_size)
+
+        # Convert list[Transition] to a single Transition with matrices
+        states = torch.tensor(np.array([t.state for t in samples])).to(dtype=torch.float32)
+        actions = torch.tensor(np.array([t.action for t in samples])).to(dtype=torch.int64)
+        rewards = torch.tensor(np.array([t.reward for t in samples])).to(dtype=torch.float32)
+        next_states = torch.tensor(np.array([t.next_state for t in samples])).to(dtype=torch.float32)
+        dones = torch.tensor(np.array([t.done for t in samples])).to(dtype=torch.bool)
+
+        log_probs = None
+        if samples[0].log_prob is not None:
+            log_probs = torch.tensor([t.log_prob for t in samples]).to(dtype=torch.float32)
+
+        values = None
+        if samples[0].value is not None:
+            values = torch.tensor([t.value for t in samples]).to(dtype=torch.float32)
+
+        return Transition(states, actions, rewards, next_states, dones, log_probs, values)
 
     @abstractmethod
     def _sample(self, batch_size: int) -> list[Transition]:
@@ -155,7 +227,15 @@ class Buffer(ABC):
         next_states = torch.tensor(np.array([t.next_state for t in samples])).to(dtype=torch.float32)
         dones = torch.tensor(np.array([t.done for t in samples])).to(dtype=torch.bool)
 
-        return Transition(states, actions, rewards, next_states, dones)
+        log_probs = None
+        if samples[0].log_prob is not None:
+            log_probs = torch.tensor([t.log_prob for t in samples]).to(dtype=torch.float32)
+
+        values = None
+        if samples[0].value is not None:
+            values = torch.tensor([t.value for t in samples]).to(dtype=torch.float32)
+
+        return Transition(states, actions, rewards, next_states, dones, log_probs, values)
 
     @abstractmethod
     def __len__(self) -> int:
