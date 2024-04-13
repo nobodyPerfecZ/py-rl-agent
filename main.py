@@ -75,7 +75,6 @@ if __name__ == "__main__":
         loss_type="huber",
         loss_kwargs={},
         max_gradient_norm=20,
-        learning_starts=64,
         batch_size=64,
         tau=5e-3,
         gamma=0.99,
