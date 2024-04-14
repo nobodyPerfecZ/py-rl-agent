@@ -6,7 +6,9 @@ from torch.optim.lr_scheduler import ExponentialLR, LinearLR, StepLR
 
 from PyRLAgent.algorithm.policy import QNetwork
 from PyRLAgent.common.buffer.ring_buffer import RingBuffer
-from PyRLAgent.util.mapping import get_value
+from PyRLAgent.util.mapping import get_value, get_values
+from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
+from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
 
 
 class TestMapping(unittest.TestCase):
@@ -54,6 +56,13 @@ class TestMapping(unittest.TestCase):
         self.loss_type_name = "huber"
         self.loss_type_class = F.huber_loss
 
+        self.wrapper_map = {
+            "normalize-observation": NormalizeObservationWrapper,
+            "normalize-reward": NormalizeRewardWrapper,
+        }
+        self.wrapper_type_names = ["normalize-observation", "normalize-reward"]
+        self.wrapper_type_classes = [NormalizeObservationWrapper, NormalizeRewardWrapper]
+
     def test_get_value(self):
         """
         Tests the method get_value().
@@ -82,6 +91,15 @@ class TestMapping(unittest.TestCase):
         loss_type2 = get_value(self.loss_map, self.loss_type_class)
         self.assertEqual(self.loss_type_class, loss_type1)
         self.assertEqual(self.loss_type_class, loss_type2)
+
+    def test_get_values(self):
+        """
+        Tests the method get_values().
+        """
+        wrapper_types = get_values(self.wrapper_map, self.wrapper_type_names)
+
+        self.assertEqual(len(self.wrapper_type_names), len(wrapper_types))
+        self.assertEqual(self.wrapper_type_classes, wrapper_types)
 
 
 if __name__ == '__main__':

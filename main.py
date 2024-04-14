@@ -8,6 +8,7 @@ if __name__ == "__main__":
     # For CartPole
     ppo = PPO(
         env_type="CartPole-v1",
+        env_wrappers=None,
         policy_type="actor-critic",
         policy_kwargs={
             "actor_architecture": [128],
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     # For CartPole
     clipped_ddqn = ClippedDDQN(
         env_type="CartPole-v1",
+        env_wrappers=None,
         policy_type="q-dueling-net",
         policy_kwargs={
             "feature_architecture": [64],

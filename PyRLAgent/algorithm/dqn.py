@@ -1,6 +1,7 @@
 import copy
 from typing import Any, Dict, Optional, Type, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,9 +16,11 @@ from PyRLAgent.common.buffer.abstract_buffer import Buffer
 from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import DeterministicPolicy
 from PyRLAgent.common.strategy.abstract_strategy import Strategy
-from PyRLAgent.util.environment import get_env
+from PyRLAgent.util.environment import get_env, transform_env
 from PyRLAgent.util.interval_counter import IntervalCounter
-from PyRLAgent.util.mapping import get_value
+from PyRLAgent.util.mapping import get_value, get_values
+from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
+from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
 
 
 class DQN(Algorithm):
@@ -33,6 +36,9 @@ class DQN(Algorithm):
     Attributes:
         env_type (str):
             The environment where we want to optimize our agent.
+
+        env_wrappers (list[str]):
+            The list of used Gymnasium Wrapper to transform the environment.
 
         policy_type (str | Type[DeterministicPolicy]):
             The type of the policy, that we want to use.
@@ -108,6 +114,7 @@ class DQN(Algorithm):
     def __init__(
             self,
             env_type: str,
+            env_wrappers: list[str],
             policy_type: Union[str, Type[DeterministicPolicy]],
             policy_kwargs: Dict[str, Any],
             strategy_type: Union[str, Type[Strategy]],
@@ -130,6 +137,7 @@ class DQN(Algorithm):
             gradient_steps: int,
     ):
         self.env_type = env_type
+        self.env_wrappers = env_wrappers
         self.env = None
         self.q_net = get_value(self.policy_mapping, policy_type)(
             observation_space=get_env(self.env_type).observation_space,
@@ -170,6 +178,20 @@ class DQN(Algorithm):
         self.target_count = IntervalCounter(initial_value=0, modulo=self.target_freq)
         self.train_count = IntervalCounter(initial_value=0, modulo=self.train_freq)
         self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
+
+    @property
+    def wrapper_mapping(self) -> dict[str, Any]:
+        """
+        Returns the mapping between keys and env wrapper classes.
+
+        Returns:
+            dict[str, Any]:
+                The mapping between keys and env wrapper classes
+        """
+        return {
+            "normalize-observation": NormalizeObservationWrapper,
+            "normalize-reward": NormalizeRewardWrapper,
+        }
 
     @property
     def policy_mapping(self) -> dict[str, Any]:
@@ -273,6 +295,13 @@ class DQN(Algorithm):
 
         # Update the counter for soft updates
         self.target_count.increment()
+
+    def create_env(self, render_mode: str = None) -> gym.Env:
+        if self.env_wrappers is None:
+            wrappers = None
+        else:
+            wrappers = get_values(self.wrapper_mapping, self.env_wrappers)
+        return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
 
     def train(self):
         """
@@ -397,7 +426,7 @@ class DQN(Algorithm):
         acc_reward = 0.0
 
         # Create the environment
-        self.env = get_env(self.env_type, render_mode=None)
+        self.env = self.create_env(render_mode=None)
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
@@ -469,7 +498,7 @@ class DQN(Algorithm):
         acc_reward = 0.0
 
         # Create the environment
-        self.env = get_env(self.env_type, render_mode="human")
+        self.env = self.create_env(render_mode="human")
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")

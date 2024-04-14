@@ -1,5 +1,6 @@
 from typing import Any, Dict, Type, Union
 
+import gymnasium as gym
 import torch
 from torch.optim import Adam, AdamW, Optimizer, SGD
 from torch.optim.lr_scheduler import ExponentialLR, LinearLR, LRScheduler, StepLR
@@ -10,9 +11,11 @@ from PyRLAgent.algorithm.policy import ActorCriticNetwork
 from PyRLAgent.common.buffer.abstract_buffer import Buffer
 from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import ActorCriticPolicy
-from PyRLAgent.util.environment import get_env
+from PyRLAgent.util.environment import get_env, transform_env
 from PyRLAgent.util.interval_counter import IntervalCounter
-from PyRLAgent.util.mapping import get_value
+from PyRLAgent.util.mapping import get_value, get_values
+from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
+from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
 
 
 class PPO(Algorithm):
@@ -25,6 +28,9 @@ class PPO(Algorithm):
     Attributes:
         env_type (str):
             The environment where we want to optimize our agent.
+
+        env_wrappers (list[str]):
+            The list of used Gymnasium Wrapper to transform the environment.
 
         policy_type (str | Type[ActorCriticPolicy]):
             The type of the policy, that we want to use.
@@ -79,6 +85,7 @@ class PPO(Algorithm):
     def __init__(
             self,
             env_type: str,
+            env_wrappers: list[str],
             policy_type: Union[str, Type[ActorCriticPolicy]],
             policy_kwargs: Dict[str, Any],
             optimizer_type: Union[str, Type[Optimizer]],
@@ -96,6 +103,7 @@ class PPO(Algorithm):
             gradient_steps: int
     ):
         self.env_type = env_type
+        self.env_wrappers = env_wrappers
         self.env = None
 
         self.model: ActorCriticPolicy = get_value(self.policy_mapping, policy_type)(
@@ -132,6 +140,20 @@ class PPO(Algorithm):
 
         # Counter
         self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
+
+    @property
+    def wrapper_mapping(self) -> dict[str, Any]:
+        """
+        Returns the mapping between keys and env wrapper classes.
+
+        Returns:
+            dict[str, Any]:
+                The mapping between keys and env wrapper classes
+        """
+        return {
+            "normalize-observation": NormalizeObservationWrapper,
+            "normalize-reward": NormalizeRewardWrapper,
+        }
 
     @property
     def policy_mapping(self) -> dict[str, Any]:
@@ -193,6 +215,13 @@ class PPO(Algorithm):
         """
         # Reset the counters
         self.render_count.reset()
+
+    def create_env(self, render_mode: str = None) -> gym.Env:
+        if self.env_wrappers is None:
+            wrappers = None
+        else:
+            wrappers = get_values(self.wrapper_mapping, self.env_wrappers)
+        return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
 
     def train(self):
         # Get the trajectories
@@ -345,7 +374,7 @@ class PPO(Algorithm):
         acc_reward = 0.0
 
         # Create the training environment
-        self.env = get_env(self.env_type, render_mode=None)
+        self.env = self.create_env(render_mode=None)
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
@@ -409,7 +438,8 @@ class PPO(Algorithm):
         old_timestep = 0
 
         # Create the environment
-        self.env = get_env(self.env_type, render_mode="human")
+        self.env = self.create_env(render_mode="human")
+        # self.env = get_env(self.env_type, render_mode="human")
 
         # Reset the environment
         state, info = self.env.reset()
