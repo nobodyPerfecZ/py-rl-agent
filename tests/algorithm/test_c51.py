@@ -11,6 +11,7 @@ class TestC51(unittest.TestCase):
     def setUp(self) -> None:
         self.agent = C51(
             env_type="CartPole-v1",
+            env_wrappers=None,
             policy_type="q-prob-net",
             policy_kwargs={
                 "Q_min": -1,
@@ -45,7 +46,7 @@ class TestC51(unittest.TestCase):
         """
         Tests the method compute_loss().
         """
-        result = self.agent.compute_loss(
+        loss, loss_info = self.agent.compute_loss(
             states=torch.rand(size=(64, 4)),
             actions=torch.randint(low=0, high=2, size=(64,)),
             rewards=torch.rand(size=(64,)),
@@ -53,8 +54,9 @@ class TestC51(unittest.TestCase):
             dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
         )
 
-        self.assertIsInstance(result, torch.Tensor)
-        self.assertIsInstance(result.item(), float)
+        self.assertIsInstance(loss, torch.Tensor)
+        self.assertIsInstance(loss.item(), float)
+        self.assertIsInstance(loss_info, dict)
 
 
 if __name__ == '__main__':

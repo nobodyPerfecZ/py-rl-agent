@@ -97,6 +97,7 @@ class PPO(Algorithm):
             clip_ratio: float,
             gamma: float,
             gae_lambda: float,
+            target_kl: float,
             vf_coef: float,
             ent_coef: float,
             render_freq: int,
@@ -133,6 +134,7 @@ class PPO(Algorithm):
         self.clip_ratio = clip_ratio
         self.gamma = gamma
         self.gae_lambda = gae_lambda
+        self.target_kl = target_kl
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef
         self.render_freq = render_freq
@@ -239,7 +241,7 @@ class PPO(Algorithm):
             self.optimizer.zero_grad()
 
             # Compute the PPO Loss (actor loss + critic loss)
-            loss = self.compute_loss(
+            loss, loss_info = self.compute_loss(
                 states=samples.state,
                 actions=samples.action,
                 log_probs=samples.log_prob,
@@ -247,6 +249,10 @@ class PPO(Algorithm):
                 values=samples.value,
                 targets=targets,
             )
+            kl = loss_info["kl"]
+            if kl > 1.5 * self.target_kl:
+                # Case: Early stopping technique
+                break
 
             # Perform the backward propagation
             loss.backward()
@@ -337,7 +343,7 @@ class PPO(Algorithm):
             advantages: torch.Tensor,
             values: torch.Tensor,
             targets: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, dict[str, Any]]:
         # Get the new log probabilities pi(a | s) and new values V(s)
         pi, new_log_probs, new_values = self.model.forward(states, actions)
 
@@ -363,7 +369,10 @@ class PPO(Algorithm):
             - self.ent_coef * entropy
         )
 
-        return total_loss
+        # Compute extra information
+        loss_info = {"kl": (log_probs - new_log_probs).mean().item()}
+
+        return total_loss, loss_info
 
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
         self.model.train()

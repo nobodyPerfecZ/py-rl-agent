@@ -14,6 +14,7 @@ class TestDDQN(unittest.TestCase):
     def setUp(self) -> None:
         self.agent = DDQN(
             env_type="CartPole-v1",
+            env_wrappers=None,
             policy_type="q-net",
             policy_kwargs={
                 "architecture": [128],
@@ -45,7 +46,7 @@ class TestDDQN(unittest.TestCase):
         """
         Tests the method compute_loss().
         """
-        result = self.agent.compute_loss(
+        loss, loss_info = self.agent.compute_loss(
             states=torch.rand(size=(64, 4)),
             actions=torch.randint(low=0, high=2, size=(64,)),
             rewards=torch.rand(size=(64,)),
@@ -53,8 +54,9 @@ class TestDDQN(unittest.TestCase):
             dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
         )
 
-        self.assertIsInstance(result, torch.Tensor)
-        self.assertIsInstance(result.item(), float)
+        self.assertIsInstance(loss, torch.Tensor)
+        self.assertIsInstance(loss.item(), float)
+        self.assertIsInstance(loss_info, dict)
 
 
 class TestClippedDDQN(unittest.TestCase):
@@ -65,6 +67,7 @@ class TestClippedDDQN(unittest.TestCase):
     def setUp(self) -> None:
         self.agent = ClippedDDQN(
             env_type="CartPole-v1",
+            env_wrappers=None,
             policy_type="q-net",
             policy_kwargs={
                 "architecture": [128],
@@ -96,7 +99,7 @@ class TestClippedDDQN(unittest.TestCase):
         """
         Tests the method compute_loss().
         """
-        result = self.agent.compute_loss(
+        loss, loss_info = self.agent.compute_loss(
             states=torch.rand(size=(64, 4)),
             actions=torch.randint(low=0, high=2, size=(64,)),
             rewards=torch.rand(size=(64,)),
@@ -104,8 +107,9 @@ class TestClippedDDQN(unittest.TestCase):
             dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
         )
 
-        self.assertIsInstance(result, torch.Tensor)
-        self.assertIsInstance(result.item(), float)
+        self.assertIsInstance(loss, torch.Tensor)
+        self.assertIsInstance(loss.item(), float)
+        self.assertIsInstance(loss_info, dict)
 
 
 if __name__ == '__main__':

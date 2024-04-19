@@ -106,7 +106,7 @@ class C51(DQN):
             rewards: torch.Tensor,
             next_states: torch.Tensor,
             dones: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, dict[str, Any]]:
         # Calculate the target probability distribution
         with torch.no_grad():
             # Calculate the probabilities of each bin
@@ -148,4 +148,4 @@ class C51(DQN):
         dist = self.q_net.forward(states)
         dist = dist[range(self.batch_size), actions]
 
-        return self.loss_fn(dist, proj_dist, **self.loss_kwargs)
+        return self.loss_fn(dist, proj_dist, **self.loss_kwargs), {}

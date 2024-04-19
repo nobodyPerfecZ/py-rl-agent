@@ -17,6 +17,7 @@ class TestDQN(unittest.TestCase):
         torch.manual_seed(0)
         self.agent = DQN(
             env_type="CartPole-v1",
+            env_wrappers=None,
             policy_type="q-net",
             policy_kwargs={
                 "architecture": [128],
@@ -48,7 +49,7 @@ class TestDQN(unittest.TestCase):
         """
         Tests the method compute_loss().
         """
-        result = self.agent.compute_loss(
+        loss, loss_info = self.agent.compute_loss(
             states=torch.rand(size=(64, 4)),
             actions=torch.randint(low=0, high=2, size=(64,)),
             rewards=torch.rand(size=(64,)),
@@ -56,8 +57,9 @@ class TestDQN(unittest.TestCase):
             dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
         )
 
-        self.assertIsInstance(result, torch.Tensor)
-        self.assertIsInstance(result.item(), float)
+        self.assertIsInstance(loss, torch.Tensor)
+        self.assertIsInstance(loss.item(), float)
+        self.assertIsInstance(loss_info, dict)
 
     def test_fit(self):
         """

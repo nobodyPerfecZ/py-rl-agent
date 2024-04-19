@@ -17,6 +17,7 @@ class TestPPO(unittest.TestCase):
         torch.manual_seed(0)
         self.agent = PPO(
             env_type="CartPole-v1",
+            env_wrappers=None,
             policy_type="actor-critic",
             policy_kwargs={
                 "actor_architecture": [128],
@@ -31,11 +32,12 @@ class TestPPO(unittest.TestCase):
             optimizer_kwargs={"lr": 1e-3},
             lr_scheduler_type="linear-lr",
             lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
-            clip_ratio=0.2,
             batch_size=32,
             steps_per_trajectory=16,
+            clip_ratio=0.2,
             gamma=0.98,
             gae_lambda=0.8,
+            target_kl=0.01,
             vf_coef=0.5,
             ent_coef=0.0,
             render_freq=50,
@@ -62,7 +64,7 @@ class TestPPO(unittest.TestCase):
         """
         Tests the method compute_loss().
         """
-        result = self.agent.compute_loss(
+        loss, loss_info = self.agent.compute_loss(
             states=torch.rand(size=(32 * 16, 4)),
             actions=torch.randint(low=0, high=2, size=(32 * 16,)),
             log_probs=torch.rand(size=(32 * 16,)),
@@ -71,8 +73,9 @@ class TestPPO(unittest.TestCase):
             targets=torch.rand(size=(32 * 16,)),
         )
 
-        self.assertIsInstance(result, torch.Tensor)
-        self.assertIsInstance(result.item(), float)
+        self.assertIsInstance(loss, torch.Tensor)
+        self.assertIsInstance(loss.item(), float)
+        self.assertIsInstance(loss_info, dict)
 
     def test_fit(self):
         """

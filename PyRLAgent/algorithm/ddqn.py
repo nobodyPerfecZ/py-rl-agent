@@ -1,3 +1,5 @@
+from typing import Any
+
 import torch
 
 from PyRLAgent.algorithm.dqn import DQN
@@ -91,7 +93,7 @@ class DDQN(DQN):
             rewards: torch.Tensor,
             next_states: torch.Tensor,
             dones: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, dict[str, Any]]:
         # Calculate the target q-values (TD-Target)
         with torch.no_grad():
             Q_next = self.target_q_net.forward(next_states)
@@ -102,7 +104,7 @@ class DDQN(DQN):
         Q = self.q_net.forward(states)
         q_values = Q.gather(dim=1, index=actions.unsqueeze(1)).squeeze()
 
-        return self.loss_fn(q_values, q_targets, **self.loss_kwargs)
+        return self.loss_fn(q_values, q_targets, **self.loss_kwargs), {}
 
 
 class ClippedDDQN(DDQN):
@@ -194,7 +196,7 @@ class ClippedDDQN(DDQN):
             rewards: torch.Tensor,
             next_states: torch.Tensor,
             dones: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, dict[str, Any]]:
         # Calculate the target q-values (TD-Target)
         with torch.no_grad():
             Q_next1 = self.q_net.forward(next_states)
@@ -209,4 +211,4 @@ class ClippedDDQN(DDQN):
         Q = self.q_net.forward(states)
         q_values = Q.gather(dim=1, index=actions.unsqueeze(1)).squeeze()
 
-        return self.loss_fn(q_values, q_targets, **self.loss_kwargs)
+        return self.loss_fn(q_values, q_targets, **self.loss_kwargs), {}

@@ -327,7 +327,7 @@ class DQN(Algorithm):
                 self.optimizer.zero_grad()
 
                 # Compute the DQN Loss function
-                loss = self.compute_loss(
+                loss, loss_info = self.compute_loss(
                     states=samples.state,
                     actions=samples.action,
                     rewards=samples.reward,
@@ -364,7 +364,7 @@ class DQN(Algorithm):
             rewards: torch.Tensor,
             next_states: torch.Tensor,
             dones: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, dict[str, Any]]:
         """
         Computes the loss between the predicted q-values and the q-targets based on the given loss function.
 
@@ -403,7 +403,7 @@ class DQN(Algorithm):
         Q = self.q_net.forward(states)
         q_values = Q.gather(dim=1, index=actions.unsqueeze(1)).squeeze()
 
-        return self.loss_fn(q_values, q_targets, **self.loss_kwargs)
+        return self.loss_fn(q_values, q_targets, **self.loss_kwargs), {}
 
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
         """

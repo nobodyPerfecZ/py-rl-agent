@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Any, Union
 
 import torch
 
@@ -21,7 +21,7 @@ class Algorithm(ABC):
         pass
 
     @abstractmethod
-    def compute_loss(self, **kwargs) -> torch.Tensor:
+    def compute_loss(self, **kwargs) -> tuple[torch.Tensor, dict[str, Any]]:
         """
         Computes the loss for the algorithm.
 
@@ -30,8 +30,12 @@ class Algorithm(ABC):
                 Arbitrary keyword arguments
 
         Returns:
-            torch.Tensor:
-                The computed loss
+            tuple[torch.Tensor, dict[str, Any]]:
+                loss (torch.Tensor):
+                    The computed loss
+
+                loss_info (dict[str, Any]):
+                    Additional information during the loss calculation
         """
         pass
 
