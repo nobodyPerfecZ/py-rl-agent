@@ -2,8 +2,6 @@ from typing import Any, Dict, Type, Union
 
 import gymnasium as gym
 import torch
-from torch.optim import Adam, AdamW, Optimizer, SGD
-from torch.optim.lr_scheduler import ExponentialLR, LinearLR, LRScheduler, StepLR
 from tqdm import tqdm
 
 from PyRLAgent.algorithm.abstract_algorithm import Algorithm
@@ -13,7 +11,9 @@ from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import ActorCriticPolicy
 from PyRLAgent.util.environment import get_env, transform_env
 from PyRLAgent.util.interval_counter import IntervalCounter
+from PyRLAgent.util.lr_scheduler import LRSchedulerEnum
 from PyRLAgent.util.mapping import get_value, get_values
+from PyRLAgent.util.optimizer import OptimizerEnum
 from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
 from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
 
@@ -39,15 +39,16 @@ class PPO(Algorithm):
         policy_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the policy.
 
-        optimizer_type (str | Type[Optimizer]):
+        optimizer_type (str | OptimizerEnum):
             The type of optimizer used for training the policy.
-            Either the name or the class itself can be given.
+            Either the name or the enum itself can be given.
 
         optimizer_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the optimizer.
 
-        lr_scheduler_type (str, Type[LRScheduler]):
+        lr_scheduler_type (str, LRSchedulerEnum):
             The type of the learning rate scheduler used for training the policy.
+            Either the name or the enum itself can be given.
 
         lr_scheduler_kwargs(Dict[str, Any]):
             Keyword arguments for initializing the learning rate scheduler.
@@ -88,9 +89,9 @@ class PPO(Algorithm):
             env_wrappers: list[str],
             policy_type: Union[str, Type[ActorCriticPolicy]],
             policy_kwargs: Dict[str, Any],
-            optimizer_type: Union[str, Type[Optimizer]],
+            optimizer_type: Union[str, OptimizerEnum],
             optimizer_kwargs: Dict[str, Any],
-            lr_scheduler_type: Union[str, Type[LRScheduler]],
+            lr_scheduler_type: Union[str, LRSchedulerEnum],
             lr_scheduler_kwargs: Dict[str, Any],
             batch_size: int,
             steps_per_trajectory: int,
@@ -107,7 +108,7 @@ class PPO(Algorithm):
         self.env_wrappers = env_wrappers
         self.env = None
 
-        self.model: ActorCriticPolicy = get_value(self.policy_mapping, policy_type)(
+        self.model = get_value(self.policy_mapping, policy_type)(
             observation_space=get_env(self.env_type, render_mode=None).observation_space,
             action_space=get_env(self.env_type, render_mode=None).action_space,
             **policy_kwargs,
@@ -117,16 +118,16 @@ class PPO(Algorithm):
 
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
-        self.optimizer: Optimizer = (
-            get_value(self.optimizer_mapping, self.optimizer_type)
-            (params=self.model.parameters(), **self.optimizer_kwargs)
+        self.optimizer = OptimizerEnum(self.optimizer_type).to_optimizer(
+            params=self.model.parameters(),
+            **self.optimizer_kwargs,
         )
 
         self.lr_scheduler_type = lr_scheduler_type
         self.lr_scheduler_kwargs = lr_scheduler_kwargs
-        self.lr_scheduler = (
-            get_value(self.lr_scheduler_mapping, self.lr_scheduler_type)
-            (optimizer=self.optimizer, **self.lr_scheduler_kwargs)
+        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to_lr_scheduler(
+            optimizer=self.optimizer,
+            **self.lr_scheduler_kwargs,
         )
 
         self.batch_size = batch_size
@@ -181,36 +182,6 @@ class PPO(Algorithm):
         """
         return {"ring": RingBuffer}
 
-    @property
-    def optimizer_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and optimizer classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and optimizer classes
-        """
-        return {
-            "adam": Adam,
-            "adamw": AdamW,
-            "sgd": SGD,
-        }
-
-    @property
-    def lr_scheduler_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and learning rate scheduler classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and learning rate scheduler classes
-        """
-        return {
-            "linear-lr": LinearLR,
-            "exp-lr": ExponentialLR,
-            "step-lr": StepLR,
-        }
-
     def _reset(self):
         """
         Resets the all used counters.
@@ -261,7 +232,8 @@ class PPO(Algorithm):
             self.optimizer.step()
 
         # Perform a learning rate scheduler update
-        self.lr_scheduler.step()
+        if self.lr_scheduler:
+            self.lr_scheduler.step()
 
         # Reset the buffer
         self.replay_buffer.reset()
@@ -538,12 +510,16 @@ class PPO(Algorithm):
         self.replay_buffer = state["replay_buffer"]
         self.optimizer_type = state["optimizer_type"]
         self.optimizer_kwargs = state["optimizer_kwargs"]
-        self.optimizer = get_value(self.optimizer_mapping, self.optimizer_type)(params=self.model.parameters(),
-                                                                                **self.optimizer_kwargs)
+        self.optimizer = OptimizerEnum(self.optimizer_type).to_optimizer(
+            params=self.model.parameters(),
+            **self.optimizer_kwargs,
+        )
         self.lr_scheduler_type = state["lr_scheduler_type"]
         self.lr_scheduler_kwargs = state["lr_scheduler_kwargs"]
-        self.lr_scheduler = get_value(self.lr_scheduler_mapping, self.lr_scheduler_type)(optimizer=self.optimizer,
-                                                                                         **self.lr_scheduler_kwargs)
+        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to_lr_scheduler(
+            optimizer=self.optimizer,
+            **self.lr_scheduler_kwargs,
+        )
         self.steps_per_trajectory = state["steps_per_trajectory"]
         self.clip_ratio = state["clip_ratio"]
         self.gamma = state["gamma"]

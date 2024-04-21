@@ -21,8 +21,8 @@ if __name__ == "__main__":
         },
         optimizer_type="adamw",
         optimizer_kwargs={"lr": 1e-3},
-        lr_scheduler_type="linear-lr",
-        lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
+        lr_scheduler_type="none",
+        lr_scheduler_kwargs={},
         batch_size=32,
         steps_per_trajectory=16,
         clip_ratio=0.2,
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     plt.ylabel("Returns")
     plt.xlabel("Episodes")
     plt.show()
-
+    """
     # For CartPole
     clipped_ddqn = ClippedDDQN(
         env_type="CartPole-v1",
@@ -101,3 +101,4 @@ if __name__ == "__main__":
     plt.ylabel("Returns")
     plt.xlabel("Episodes")
     plt.show()
+    """

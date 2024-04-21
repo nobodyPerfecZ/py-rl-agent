@@ -2,3 +2,4 @@ numpy
 torch
 gymnasium
 PyYAML
+tqdm

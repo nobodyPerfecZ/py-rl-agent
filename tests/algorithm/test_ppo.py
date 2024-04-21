@@ -30,7 +30,7 @@ class TestPPO(unittest.TestCase):
             },
             optimizer_type="adamw",
             optimizer_kwargs={"lr": 1e-3},
-            lr_scheduler_type="linear-lr",
+            lr_scheduler_type="linear_lr",
             lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
             batch_size=32,
             steps_per_trajectory=16,
