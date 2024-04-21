@@ -31,7 +31,7 @@ class TestDQN(unittest.TestCase):
             replay_buffer_kwargs={"max_size": 10000},
             optimizer_type="adam",
             optimizer_kwargs={"lr": 5e-4},
-            lr_scheduler_type="linear_lr",
+            lr_scheduler_type="linear-lr",
             lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.3, "total_iters": 1000},
             loss_type="huber",
             loss_kwargs={},
