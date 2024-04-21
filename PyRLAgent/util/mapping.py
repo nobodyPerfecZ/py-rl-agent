@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Union
 
 
@@ -47,3 +48,13 @@ def get_values(mapping: dict[str, Any], names: list[Union[str, Any]]) -> list[An
             The values of each name from mapping
     """
     return [get_value(mapping, name) for name in names]
+
+
+def get_values_enum(mapping: dict[Enum, Any], keys: Union[Enum, list[Enum]]) -> Union[Any, list[Any]]:
+    # TODO: Add documentation
+    if isinstance(keys, Enum):
+        # Case: single key is given
+        return mapping.get(keys)
+    else:
+        # Case: multiple keys are given
+        return [mapping.get(key) for key in keys]

@@ -19,8 +19,10 @@ from torch.optim.lr_scheduler import (
     CosineAnnealingWarmRestarts
 )
 
+from PyRLAgent.enum.abstract_enum import AbstractStrEnum
 
-class LRSchedulerEnum(str, Enum):
+
+class LRSchedulerEnum(AbstractStrEnum):
     """
     An enumeration of supported learning rate scheduler types in PyTorch.
 
@@ -43,16 +45,7 @@ class LRSchedulerEnum(str, Enum):
     COSINE_ANNEALING_WARM_RESTARTS = "cosine-annealing-warm-restarts"
 
     @classmethod
-    def wrapper(cls) -> dict[str, Any]:
-        """
-        Returns the wrapper dictionary, where
-            - `key` represents the learning rate scheduler type as enum
-            - `value` represents the learning rate scheduler class
-
-        Returns:
-            dict[str, Any]:
-                The wrapper of LRSchedulerEnum
-        """
+    def wrapper(cls) -> dict[Enum, Any]:
         return {
             cls.NONE: None,
             cls.LAMBDA_LR: LambdaLR,
@@ -70,21 +63,7 @@ class LRSchedulerEnum(str, Enum):
             cls.COSINE_ANNEALING_WARM_RESTARTS: CosineAnnealingWarmRestarts,
         }
 
-    def to_lr_scheduler(self, optimizer: Optimizer, **lr_scheduler_kwargs) -> Optional[LRScheduler]:
-        """
-        Initialize the learning rate scheduler given the arguments.
-
-        Args:
-            optimizer (Optimizer):
-                The used optimizer to schedule the learning rate of it
-
-            **lr_scheduler_kwargs:
-                Additional arguments for the lr_scheduler class
-
-        Returns:
-            LRScheduler | None:
-                The initialized lr_scheduler
-        """
+    def to(self, optimizer: Optimizer, **lr_scheduler_kwargs) -> Optional[LRScheduler]:
         if self == LRSchedulerEnum.NONE:
             return None
         return LRSchedulerEnum.wrapper()[self](optimizer=optimizer, **lr_scheduler_kwargs)

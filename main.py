@@ -8,8 +8,8 @@ if __name__ == "__main__":
     # For CartPole
     ppo = PPO(
         env_type="CartPole-v1",
-        env_wrappers=None,
-        policy_type="actor-critic",
+        env_wrappers="none",
+        policy_type="actor-critic-net",
         policy_kwargs={
             "actor_architecture": [128],
             "actor_activation_fn": nn.Tanh(),

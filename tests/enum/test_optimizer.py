@@ -18,7 +18,7 @@ from torch.optim import (
     Rprop
 )
 
-from PyRLAgent.util.optimizer import OptimizerEnum
+from PyRLAgent.enum.optimizer import OptimizerEnum
 
 
 class TestOptimizerEnum(unittest.TestCase):
@@ -68,23 +68,23 @@ class TestOptimizerEnum(unittest.TestCase):
         """
         self.assertDictEqual(self.wrapper, OptimizerEnum.wrapper())
 
-    def test_to_optimizer(self):
+    def test_to(self):
         """
-        Tests the method to_optimizer().
+        Tests the method to().
         """
-        optimizer1 = OptimizerEnum.ADADELTA.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs1)
-        optimizer2 = OptimizerEnum.ADAGRAD.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs2)
-        optimizer3 = OptimizerEnum.ADAM.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs3)
-        optimizer4 = OptimizerEnum.ADAMW.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs4)
-        optimizer5 = OptimizerEnum.SPARSEADAM.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs5)
-        optimizer6 = OptimizerEnum.ADAMAX.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs6)
-        optimizer7 = OptimizerEnum.ASGD.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs7)
-        optimizer8 = OptimizerEnum.LBFGS.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs8)
-        optimizer9 = OptimizerEnum.NADAM.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs9)
-        optimizer10 = OptimizerEnum.RADAM.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs10)
-        optimizer11 = OptimizerEnum.RMSPROP.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs11)
-        optimizer12 = OptimizerEnum.RPROP.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs12)
-        optimizer13 = OptimizerEnum.SGD.to_optimizer(params=self.theta, lr=self.lr, **self.optimizer_kwargs13)
+        optimizer1 = OptimizerEnum.ADADELTA.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs1)
+        optimizer2 = OptimizerEnum.ADAGRAD.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs2)
+        optimizer3 = OptimizerEnum.ADAM.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs3)
+        optimizer4 = OptimizerEnum.ADAMW.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs4)
+        optimizer5 = OptimizerEnum.SPARSEADAM.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs5)
+        optimizer6 = OptimizerEnum.ADAMAX.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs6)
+        optimizer7 = OptimizerEnum.ASGD.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs7)
+        optimizer8 = OptimizerEnum.LBFGS.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs8)
+        optimizer9 = OptimizerEnum.NADAM.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs9)
+        optimizer10 = OptimizerEnum.RADAM.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs10)
+        optimizer11 = OptimizerEnum.RMSPROP.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs11)
+        optimizer12 = OptimizerEnum.RPROP.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs12)
+        optimizer13 = OptimizerEnum.SGD.to(params=self.theta, lr=self.lr, **self.optimizer_kwargs13)
 
         self.assertIsInstance(optimizer1, Adadelta)
         self.assertEqual(self.lr, optimizer1.param_groups[0]["lr"])

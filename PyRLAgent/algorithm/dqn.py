@@ -9,18 +9,16 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from PyRLAgent.algorithm.abstract_algorithm import Algorithm
-from PyRLAgent.algorithm.policy import QDuelingNetwork, QNetwork
-from PyRLAgent.common.buffer.abstract_buffer import Buffer
-from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import DeterministicPolicy
-from PyRLAgent.common.strategy.abstract_strategy import Strategy
+from PyRLAgent.enum.buffer import BufferEnum
+from PyRLAgent.enum.lr_scheduler import LRSchedulerEnum
+from PyRLAgent.enum.optimizer import OptimizerEnum
+from PyRLAgent.enum.policy import PolicyEnum
+from PyRLAgent.enum.strategy import StrategyEnum
+from PyRLAgent.enum.wrapper import GymWrapperEnum
 from PyRLAgent.util.environment import get_env, transform_env
 from PyRLAgent.util.interval_counter import IntervalCounter
-from PyRLAgent.util.lr_scheduler import LRSchedulerEnum
 from PyRLAgent.util.mapping import get_value, get_values
-from PyRLAgent.util.optimizer import OptimizerEnum
-from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
-from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
 
 
 class DQN(Algorithm):
@@ -37,26 +35,26 @@ class DQN(Algorithm):
         env_type (str):
             The environment where we want to optimize our agent.
 
-        env_wrappers (list[str]):
+        env_wrappers (str | list[str] | GymWrapperEnum | list[GymWrapperEnum]):
             The list of used Gymnasium Wrapper to transform the environment.
 
-        policy_type (str | Type[DeterministicPolicy]):
+        policy_type (str | PolicyEnum):
             The type of the policy, that we want to use.
-            Either the name or the class itself can be given.
+            Either the name or the enum itself can be given.
 
         policy_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the policy.
 
-        strategy_type (str | Type[Strategy]):
+        strategy_type (str | StrategyEnum):
             The type of exploration strategy that is used for the action selection (exploration-exploitation problem).
-            Either the name or the class itself can be given.
+            Either the name or the enum itself can be given.
 
         strategy_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the strategy.
 
-        replay_buffer_type (str | Type[Buffer]):
+        replay_buffer_type (str | BufferEnum):
             The type of replay buffer used for storing experiences (experience replay).
-            Either the name or the class itself can be given.
+            Either the name or the enum itself can be given.
 
         replay_buffer_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the replay buffer.
@@ -115,12 +113,12 @@ class DQN(Algorithm):
     def __init__(
             self,
             env_type: str,
-            env_wrappers: list[str],
+            env_wrappers: Union[str, list[str], GymWrapperEnum, list[GymWrapperEnum]],
             policy_type: Union[str, Type[DeterministicPolicy]],
             policy_kwargs: Dict[str, Any],
-            strategy_type: Union[str, Type[Strategy]],
+            strategy_type: Union[str, StrategyEnum],
             strategy_kwargs: Dict[str, Any],
-            replay_buffer_type: Union[str, Type[Buffer]],
+            replay_buffer_type: Union[str, BufferEnum],
             replay_buffer_kwargs: Dict[str, Any],
             optimizer_type: Union[str, OptimizerEnum],
             optimizer_kwargs: Dict[str, Any],
@@ -140,7 +138,8 @@ class DQN(Algorithm):
         self.env_type = env_type
         self.env_wrappers = env_wrappers
         self.env = None
-        self.q_net = get_value(self.policy_mapping, policy_type)(
+        self.policy_type = policy_type
+        self.q_net = PolicyEnum(self.policy_type).to(
             observation_space=get_env(self.env_type).observation_space,
             action_space=get_env(self.env_type).action_space,
             **policy_kwargs,
@@ -151,18 +150,21 @@ class DQN(Algorithm):
         self.target_q_net.freeze()
 
         self.replay_buffer_type = replay_buffer_type
-        self.replay_buffer = get_value(self.replay_buffer_mapping, self.replay_buffer_type)(**replay_buffer_kwargs)
+        self.replay_buffer_kwargs = replay_buffer_kwargs
+        self.replay_buffer = BufferEnum(self.replay_buffer_type).to(
+            **self.replay_buffer_kwargs
+        )
 
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
-        self.optimizer = OptimizerEnum(self.optimizer_type).to_optimizer(
+        self.optimizer = OptimizerEnum(self.optimizer_type).to(
             params=self.q_net.parameters(),
             **self.optimizer_kwargs
         )
 
         self.lr_scheduler_type = lr_scheduler_type
         self.lr_scheduler_kwargs = lr_scheduler_kwargs
-        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to_lr_scheduler(
+        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to(
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs
         )
@@ -183,45 +185,6 @@ class DQN(Algorithm):
         self.target_count = IntervalCounter(initial_value=0, modulo=self.target_freq)
         self.train_count = IntervalCounter(initial_value=0, modulo=self.train_freq)
         self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
-
-    @property
-    def wrapper_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and env wrapper classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and env wrapper classes
-        """
-        return {
-            "normalize-observation": NormalizeObservationWrapper,
-            "normalize-reward": NormalizeRewardWrapper,
-        }
-
-    @property
-    def policy_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and policy classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and policy classes
-        """
-        return {
-            "q-net": QNetwork,
-            "q-dueling-net": QDuelingNetwork,
-        }
-
-    @property
-    def replay_buffer_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and replay buffer classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and replay buffer classes
-        """
-        return {"ring": RingBuffer}
 
     @property
     def loss_fn_mapping(self) -> dict[str, Any]:
@@ -272,11 +235,22 @@ class DQN(Algorithm):
         self.target_count.increment()
 
     def create_env(self, render_mode: str = None) -> gym.Env:
-        if self.env_wrappers is None:
-            wrappers = None
+        if isinstance(self.env_wrappers, (str, GymWrapperEnum)):
+            # Case: Single wrapper is given
+            wrappers = [get_value(GymWrapperEnum.wrapper(), self.env_wrappers)]
         else:
-            wrappers = get_values(self.wrapper_mapping, self.env_wrappers)
-        return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
+            # Case: Multiple wrappers are given
+            wrappers = get_values(GymWrapperEnum.wrapper(), self.env_wrappers)
+
+        # Remove all none occurrences
+        wrappers = [wrapper for wrapper in wrappers if wrapper is not None]
+
+        if wrappers:
+            # Case: Wrappers are given
+            return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
+        else:
+            # Case: No wrappers are given
+            return get_env(self.env_type, render_mode=render_mode)
 
     def train(self):
         """
@@ -583,18 +557,16 @@ class DQN(Algorithm):
         self.replay_buffer = state["replay_buffer"]
         self.optimizer_type = state["optimizer_type"]
         self.optimizer_kwargs = state["optimizer_kwargs"]
-        self.optimizer = self.optimizer = OptimizerEnum(self.optimizer_type).to_optimizer(
+        self.optimizer = self.optimizer = OptimizerEnum(self.optimizer_type).to(
             params=self.q_net.parameters(),
             **self.optimizer_kwargs
         )
-
         self.lr_scheduler_type = state["lr_scheduler_type"]
         self.lr_scheduler_kwargs = state["lr_scheduler_kwargs"]
-        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to_lr_scheduler(
+        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to(
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs
         )
-
         self.loss_fn = state["loss_fn"]
         self.loss_kwargs = state["loss_kwargs"]
         self.max_gradient_norm = state["max_gradient_norm"]

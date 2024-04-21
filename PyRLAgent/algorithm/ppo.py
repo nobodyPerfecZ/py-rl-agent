@@ -5,17 +5,16 @@ import torch
 from tqdm import tqdm
 
 from PyRLAgent.algorithm.abstract_algorithm import Algorithm
-from PyRLAgent.algorithm.policy import ActorCriticNetwork
 from PyRLAgent.common.buffer.abstract_buffer import Buffer
 from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import ActorCriticPolicy
+from PyRLAgent.enum.lr_scheduler import LRSchedulerEnum
+from PyRLAgent.enum.optimizer import OptimizerEnum
+from PyRLAgent.enum.policy import PolicyEnum
+from PyRLAgent.enum.wrapper import GymWrapperEnum
 from PyRLAgent.util.environment import get_env, transform_env
 from PyRLAgent.util.interval_counter import IntervalCounter
-from PyRLAgent.util.lr_scheduler import LRSchedulerEnum
-from PyRLAgent.util.mapping import get_value, get_values
-from PyRLAgent.util.optimizer import OptimizerEnum
-from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
-from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
+from PyRLAgent.util.mapping import get_values_enum
 
 
 class PPO(Algorithm):
@@ -29,12 +28,12 @@ class PPO(Algorithm):
         env_type (str):
             The environment where we want to optimize our agent.
 
-        env_wrappers (list[str]):
+        env_wrappers (str | list[str] | GymWrapperEnum | list[GymWrapperEnum]):
             The list of used Gymnasium Wrapper to transform the environment.
 
-        policy_type (str | Type[ActorCriticPolicy]):
+        policy_type (str | PolicyEnum):
             The type of the policy, that we want to use.
-            Either the name or the class itself can be given.
+            Either the name or the enum itself can be given.
 
         policy_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the policy.
@@ -86,7 +85,7 @@ class PPO(Algorithm):
     def __init__(
             self,
             env_type: str,
-            env_wrappers: list[str],
+            env_wrappers: Union[str, list[str], GymWrapperEnum, list[GymWrapperEnum]],
             policy_type: Union[str, Type[ActorCriticPolicy]],
             policy_kwargs: Dict[str, Any],
             optimizer_type: Union[str, OptimizerEnum],
@@ -105,10 +104,15 @@ class PPO(Algorithm):
             gradient_steps: int
     ):
         self.env_type = env_type
-        self.env_wrappers = env_wrappers
+        if isinstance(env_wrappers, (str, GymWrapperEnum)):
+            self.env_wrappers = GymWrapperEnum(env_wrappers)
+        else:
+            self.env_wrappers = [GymWrapperEnum(env_wrapper) for env_wrapper in env_wrappers]
+            print(self.env_wrappers)
         self.env = None
 
-        self.model = get_value(self.policy_mapping, policy_type)(
+        self.policy_type = policy_type
+        self.model = PolicyEnum(self.policy_type).to(
             observation_space=get_env(self.env_type, render_mode=None).observation_space,
             action_space=get_env(self.env_type, render_mode=None).action_space,
             **policy_kwargs,
@@ -118,14 +122,14 @@ class PPO(Algorithm):
 
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
-        self.optimizer = OptimizerEnum(self.optimizer_type).to_optimizer(
+        self.optimizer = OptimizerEnum(self.optimizer_type).to(
             params=self.model.parameters(),
             **self.optimizer_kwargs,
         )
 
         self.lr_scheduler_type = lr_scheduler_type
         self.lr_scheduler_kwargs = lr_scheduler_kwargs
-        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to_lr_scheduler(
+        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to(
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs,
         )
@@ -144,44 +148,6 @@ class PPO(Algorithm):
         # Counter
         self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
 
-    @property
-    def wrapper_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and env wrapper classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and env wrapper classes
-        """
-        return {
-            "normalize-observation": NormalizeObservationWrapper,
-            "normalize-reward": NormalizeRewardWrapper,
-        }
-
-    @property
-    def policy_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and policy classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and policy classes
-        """
-        return {
-            "actor-critic": ActorCriticNetwork,
-        }
-
-    @property
-    def replay_buffer_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and replay buffer classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and replay buffer classes
-        """
-        return {"ring": RingBuffer}
-
     def _reset(self):
         """
         Resets the all used counters.
@@ -190,11 +156,22 @@ class PPO(Algorithm):
         self.render_count.reset()
 
     def create_env(self, render_mode: str = None) -> gym.Env:
-        if self.env_wrappers is None:
-            wrappers = None
+        if isinstance(self.env_wrappers, (str, GymWrapperEnum)):
+            # Case: Single wrapper is given
+            wrappers = [get_values_enum(GymWrapperEnum.wrapper(), self.env_wrappers)]
         else:
-            wrappers = get_values(self.wrapper_mapping, self.env_wrappers)
-        return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
+            # Case: Multiple wrappers are given
+            wrappers = get_values_enum(GymWrapperEnum.wrapper(), self.env_wrappers)
+
+        # Remove all none occurrences
+        wrappers = [wrapper for wrapper in wrappers if wrapper is not None]
+
+        if wrappers:
+            # Case: Wrappers are given
+            return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
+        else:
+            # Case: No wrappers are given
+            return get_env(self.env_type, render_mode=render_mode)
 
     def train(self):
         # Get the trajectories
@@ -510,13 +487,13 @@ class PPO(Algorithm):
         self.replay_buffer = state["replay_buffer"]
         self.optimizer_type = state["optimizer_type"]
         self.optimizer_kwargs = state["optimizer_kwargs"]
-        self.optimizer = OptimizerEnum(self.optimizer_type).to_optimizer(
+        self.optimizer = OptimizerEnum(self.optimizer_type).to(
             params=self.model.parameters(),
             **self.optimizer_kwargs,
         )
         self.lr_scheduler_type = state["lr_scheduler_type"]
         self.lr_scheduler_kwargs = state["lr_scheduler_kwargs"]
-        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to_lr_scheduler(
+        self.lr_scheduler = LRSchedulerEnum(self.lr_scheduler_type).to(
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs,
         )

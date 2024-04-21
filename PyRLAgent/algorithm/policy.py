@@ -12,11 +12,8 @@ from PyRLAgent.common.network.dueling import create_dueling_mlp
 from PyRLAgent.common.network.mlp import create_mlp
 from PyRLAgent.common.policy.abstract_policy import ActorCriticPolicy, DeterministicPolicy
 from PyRLAgent.common.strategy.abstract_strategy import Strategy
-from PyRLAgent.common.strategy.epsilon_greedy import ExponentialDecayEpsilonGreedy, LinearDecayEpsilonGreedy
 from PyRLAgent.common.strategy.greedy import Greedy
-from PyRLAgent.common.strategy.random import Random
-from PyRLAgent.common.strategy.ucb import UCB
-from PyRLAgent.util.mapping import get_value
+from PyRLAgent.enum.strategy import StrategyEnum
 
 
 class QNetwork(DeterministicPolicy):
@@ -41,31 +38,13 @@ class QNetwork(DeterministicPolicy):
             bias=bias,
         )
 
-        strategy_type = get_value(self.strategy_mapping, strategy_type)
-        strategy = strategy_type(**strategy_kwargs)
+        strategy = StrategyEnum(strategy_type).to(**strategy_kwargs)
 
         super().__init__(
             model=model,
             non_deterministic_strategy=strategy,
             deterministic_strategy=Greedy(),
         )
-
-    @property
-    def strategy_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and strategy classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and strategy classes
-        """
-        return {
-            "random": Random,
-            "greedy": Greedy,
-            "linear-epsilon": LinearDecayEpsilonGreedy,
-            "exp-epsilon": ExponentialDecayEpsilonGreedy,
-            "ucb": UCB,
-        }
 
     def _predict(self, state: torch.Tensor, deterministic: bool) -> torch.Tensor:
         q_values = self.model.forward(state)
@@ -112,31 +91,13 @@ class QDuelingNetwork(DeterministicPolicy):
             bias=bias,
         )
 
-        strategy_type = get_value(self.strategy_mapping, strategy_type)
-        strategy = strategy_type(**strategy_kwargs)
+        strategy = StrategyEnum(strategy_type).to(**strategy_kwargs)
 
         super().__init__(
             model=model,
             non_deterministic_strategy=strategy,
             deterministic_strategy=Greedy(),
         )
-
-    @property
-    def strategy_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and strategy classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and strategy classes
-        """
-        return {
-            "random": Random,
-            "greedy": Greedy,
-            "linear-epsilon": LinearDecayEpsilonGreedy,
-            "exp-epsilon": ExponentialDecayEpsilonGreedy,
-            "ucb": UCB,
-        }
 
     def _predict(self, state: torch.Tensor, deterministic: bool) -> torch.Tensor:
         q_values = self.model.forward(state)
@@ -189,31 +150,13 @@ class QProbNetwork(DeterministicPolicy):
             bias=bias,
         )
 
-        strategy_type = get_value(self.strategy_mapping, strategy_type)
-        strategy = strategy_type(**strategy_kwargs)
+        strategy = StrategyEnum(strategy_type).to(**strategy_kwargs)
 
         super().__init__(
             model=model,
             non_deterministic_strategy=strategy,
             deterministic_strategy=Greedy(),
         )
-
-    @property
-    def strategy_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and strategy classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and strategy classes
-        """
-        return {
-            "random": Random,
-            "greedy": Greedy,
-            "linear-epsilon": LinearDecayEpsilonGreedy,
-            "exp-epsilon": ExponentialDecayEpsilonGreedy,
-            "ucb": UCB,
-        }
 
     def _predict(self, state: torch.Tensor, deterministic: bool) -> torch.Tensor:
         # Get the logits of the probability distribution

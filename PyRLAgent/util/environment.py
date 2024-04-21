@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Type, Union
 
 import gymnasium as gym
 
@@ -19,27 +19,26 @@ def get_env(name: str, **env_kwargs) -> gym.Env:
     return env
 
 
-def transform_env(env: gym.Env, wrappers: Optional[list[Type[gym.Wrapper]]] = None) -> gym.Env:
+def transform_env(env: gym.Env, wrappers: Union[Type[gym.Wrapper], list[Type[gym.Wrapper]]]) -> gym.Env:
     """
     Transform the Gymnasium environment with the given wrappers.
-
-    If no wrappers are provided, then the given environment will be returned.
 
     Args:
         env (gym.Env):
             The Gymnasium environment we want to transform.
 
-        wrappers (list[Type[gym.Wrapper]], optional):
-            The list of Gymnasium wrappers to transform the environment
+        wrappers (Type[gym.Wrapper] | list[Type[gym.Wrapper]]):
+            Single value or a list of Gymnasium wrappers to transform the environment
 
     Returns:
         gym.Env:
             The transformed Gymnasium environment
     """
-    if wrappers is None:
-        # Case: No wrappers are provided
-        return env
-
-    for wrapper in wrappers:
-        env = wrapper(env)
+    if not isinstance(wrappers, list):
+        # Case: single wrapper is given
+        env = wrappers(env)
+    else:
+        # Case: multiple wrappers are given
+        for wrapper in wrappers:
+            env = wrapper(env)
     return env

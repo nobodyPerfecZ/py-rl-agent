@@ -19,7 +19,7 @@ from torch.optim.lr_scheduler import (
     CosineAnnealingWarmRestarts
 )
 
-from PyRLAgent.util.lr_scheduler import LRSchedulerEnum
+from PyRLAgent.enum.lr_scheduler import LRSchedulerEnum
 
 
 class TestLRSchedulerEnum(unittest.TestCase):
@@ -69,59 +69,59 @@ class TestLRSchedulerEnum(unittest.TestCase):
         """
         self.assertDictEqual(self.wrapper, LRSchedulerEnum.wrapper())
 
-    def test_to_lr_scheduler(self):
+    def test_to(self):
         """
-        Tests the method to_lr_scheduler().
+        Tests the method to().
         """
-        lr_scheduler1 = LRSchedulerEnum.LAMBDA_LR.to_lr_scheduler(
+        lr_scheduler1 = LRSchedulerEnum.LAMBDA_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs1
         )
-        lr_scheduler2 = LRSchedulerEnum.MULTIPLICATIVE_LR.to_lr_scheduler(
+        lr_scheduler2 = LRSchedulerEnum.MULTIPLICATIVE_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs2
         )
-        lr_scheduler3 = LRSchedulerEnum.STEP_LR.to_lr_scheduler(
+        lr_scheduler3 = LRSchedulerEnum.STEP_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs3
         )
-        lr_scheduler4 = LRSchedulerEnum.MULTISTEP_LR.to_lr_scheduler(
+        lr_scheduler4 = LRSchedulerEnum.MULTISTEP_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs4
         )
-        lr_scheduler5 = LRSchedulerEnum.CONSTANT_LR.to_lr_scheduler(
+        lr_scheduler5 = LRSchedulerEnum.CONSTANT_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs5
         )
-        lr_scheduler6 = LRSchedulerEnum.LINEAR_LR.to_lr_scheduler(
+        lr_scheduler6 = LRSchedulerEnum.LINEAR_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs6
         )
-        lr_scheduler7 = LRSchedulerEnum.EXPONENTIAL_LR.to_lr_scheduler(
+        lr_scheduler7 = LRSchedulerEnum.EXPONENTIAL_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs7
         )
-        lr_scheduler8 = LRSchedulerEnum.POLYNOMIAL_LR.to_lr_scheduler(
+        lr_scheduler8 = LRSchedulerEnum.POLYNOMIAL_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs8
         )
-        lr_scheduler9 = LRSchedulerEnum.COSINE_ANNEALING_LR.to_lr_scheduler(
+        lr_scheduler9 = LRSchedulerEnum.COSINE_ANNEALING_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs9
         )
-        lr_scheduler10 = LRSchedulerEnum.REDUCE_LR_ON_PLATEAU.to_lr_scheduler(
+        lr_scheduler10 = LRSchedulerEnum.REDUCE_LR_ON_PLATEAU.to(
             self.optimizer,
             **self.lr_scheduler_kwargs10
         )
-        lr_scheduler11 = LRSchedulerEnum.CYCLIC_LR.to_lr_scheduler(
+        lr_scheduler11 = LRSchedulerEnum.CYCLIC_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs11
         )
-        lr_scheduler12 = LRSchedulerEnum.ONE_CYCLE_LR.to_lr_scheduler(
+        lr_scheduler12 = LRSchedulerEnum.ONE_CYCLE_LR.to(
             self.optimizer,
             **self.lr_scheduler_kwargs12
         )
-        lr_scheduler13 = LRSchedulerEnum.COSINE_ANNEALING_WARM_RESTARTS.to_lr_scheduler(
+        lr_scheduler13 = LRSchedulerEnum.COSINE_ANNEALING_WARM_RESTARTS.to(
             self.optimizer,
             **self.lr_scheduler_kwargs13
         )

@@ -12,7 +12,12 @@ from PyRLAgent.common.strategy.abstract_strategy import Strategy
 from PyRLAgent.util.observation import obs_to_tensor
 
 
-class DeterministicPolicy(nn.Module, ABC):
+class Policy(nn.Module, ABC):
+    # TODO: Add documentation
+    pass
+
+
+class DeterministicPolicy(Policy, ABC):
     """
     An abstract class representing a policy.
 
@@ -153,11 +158,11 @@ class DeterministicPolicy(nn.Module, ABC):
         self.deterministic_strategy = state["deterministic_strategy"]
 
 
-class StochasticPolicy(nn.Module, ABC):
+class StochasticPolicy(Policy, ABC):
     pass
 
 
-class ActorCriticPolicy(nn.Module, ABC):
+class ActorCriticPolicy(Policy, ABC):
     """
     An abstract class representing a stochastic policy.
 
