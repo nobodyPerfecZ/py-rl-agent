@@ -1,10 +1,10 @@
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 import torch
+from torch import nn
 from tqdm import tqdm
 
 from PyRLAgent.algorithm.abstract_algorithm import Algorithm
-from PyRLAgent.common.buffer.abstract_buffer import Buffer
 from PyRLAgent.common.buffer.ring_buffer import RingBuffer
 from PyRLAgent.common.policy.abstract_policy import ActorCriticPolicy
 from PyRLAgent.enum.lr_scheduler import LRSchedulerEnum
@@ -50,6 +50,10 @@ class PPO(Algorithm):
         lr_scheduler_kwargs(Dict[str, Any]):
             Keyword arguments for initializing the learning rate scheduler.
 
+        max_gradient_norm (float | None):
+            The maximum gradient norm for gradient clipping.
+            If the value is None, then no gradient clipping is used.
+
         batch_size (int):
             The batch size (number of different actors) N.
 
@@ -90,6 +94,7 @@ class PPO(Algorithm):
             optimizer_kwargs: Dict[str, Any],
             lr_scheduler_type: Union[str, LRSchedulerEnum],
             lr_scheduler_kwargs: Dict[str, Any],
+            max_gradient_norm: Optional[float],
             batch_size: int,
             steps_per_trajectory: int,
             clip_ratio: float,
@@ -115,7 +120,7 @@ class PPO(Algorithm):
 
         self.batch_size = batch_size
         self.steps_per_trajectory = steps_per_trajectory
-        self.replay_buffer: Buffer = RingBuffer(max_size=self.batch_size * self.steps_per_trajectory)
+        self.replay_buffer = RingBuffer(max_size=self.batch_size * self.steps_per_trajectory)
 
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
@@ -131,8 +136,7 @@ class PPO(Algorithm):
             **self.lr_scheduler_kwargs,
         )
 
-        self.batch_size = batch_size
-        self.steps_per_trajectory = steps_per_trajectory
+        self.max_gradient_norm = max_gradient_norm
         self.clip_ratio = clip_ratio
         self.gamma = gamma
         self.gae_lambda = gae_lambda
@@ -151,6 +155,14 @@ class PPO(Algorithm):
         """
         # Reset the counters
         self.render_count.reset()
+
+    def _apply_gradient_norm(self):
+        """
+        Applies gradient clipping on the policy weights based on the given maximum gradient norm.
+        If the maximum gradient norm is not given, then no gradient norm will be performed.
+        """
+        if self.max_gradient_norm is not None:
+            nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_gradient_norm)
 
     def train(self):
         # Get the trajectories
@@ -176,6 +188,7 @@ class PPO(Algorithm):
                 values=samples.value,
                 targets=targets,
             )
+
             kl = loss_info["kl"]
             if kl > 1.5 * self.target_kl:
                 # Case: Early stopping technique
@@ -183,6 +196,9 @@ class PPO(Algorithm):
 
             # Perform the backward propagation
             loss.backward()
+
+            # Clip the gradients
+            self._apply_gradient_norm()
 
             # Perform the gradient update
             self.optimizer.step()
@@ -452,15 +468,18 @@ class PPO(Algorithm):
             "optimizer_kwargs": self.optimizer_kwargs,
             "lr_scheduler_type": self.lr_scheduler_type,
             "lr_scheduler_kwargs": self.lr_scheduler_kwargs,
+            "max_gradient_norm": self.max_gradient_norm,
             "batch_size": self.batch_size,
             "steps_per_trajectory": self.steps_per_trajectory,
             "clip_ratio": self.clip_ratio,
             "gamma": self.gamma,
             "gae_lambda": self.gae_lambda,
+            "target_kl": self.target_kl,
             "vf_coef": self.vf_coef,
             "ent_coef": self.ent_coef,
             "render_freq": self.render_freq,
             "gradient_steps": self.gradient_steps,
+            "render_count": self.render_count,
         }
 
     def __setstate__(self, state: dict):
@@ -483,12 +502,15 @@ class PPO(Algorithm):
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs,
         )
+        self.max_gradient_norm = state["max_gradient_norm"]
         self.batch_size = state["batch_size"]
         self.steps_per_trajectory = state["steps_per_trajectory"]
         self.clip_ratio = state["clip_ratio"]
         self.gamma = state["gamma"]
         self.gae_lambda = state["gae_lambda"]
+        self.target_kl = state["target_kl"]
         self.vf_coef = state["vf_coef"]
         self.ent_coef = state["ent_coef"]
         self.render_freq = state["render_freq"]
         self.gradient_steps = state["gradient_steps"]
+        self.render_count = state["render_count"]

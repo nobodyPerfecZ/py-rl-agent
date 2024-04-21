@@ -500,6 +500,7 @@ class DQN(Algorithm):
     def __getstate__(self) -> dict:
         return {
             "env_type": self.env_type,
+            "env_wrappers": self.env_wrappers,
             "q_net": self.q_net,
             "target_q_net": self.target_q_net,
             "replay_buffer_type": self.replay_buffer_type,
@@ -526,6 +527,7 @@ class DQN(Algorithm):
 
     def __setstate__(self, state: dict):
         self.env_type = state["env_type"]
+        self.env_wrappers = state["env_wrappers"]
         self.q_net = state["q_net"]
         self.target_q_net = state["target_q_net"]
         self.target_q_net.freeze()

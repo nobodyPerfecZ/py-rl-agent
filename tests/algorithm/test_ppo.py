@@ -32,6 +32,7 @@ class TestPPO(unittest.TestCase):
             optimizer_kwargs={"lr": 1e-3},
             lr_scheduler_type="linear-lr",
             lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
+            max_gradient_norm=1.0,
             batch_size=32,
             steps_per_trajectory=16,
             clip_ratio=0.2,
@@ -123,6 +124,10 @@ class TestPPO(unittest.TestCase):
 
         # Check if they are equal (overriding __eq__ causes much slower training)
         self.assertEqual(str(self.agent), str(agent))
+
+        # Train/Eval the agent
+        agent.fit(n_timesteps=1e3)
+        agent.eval(n_timesteps=1e2)
 
 
 if __name__ == '__main__':

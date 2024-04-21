@@ -108,6 +108,10 @@ class TestDQN(unittest.TestCase):
         # Check if they are equal (overriding __eq__ causes much slower training)
         self.assertEqual(str(self.agent), str(agent))
 
+        # Train/Eval the agent
+        agent.fit(n_timesteps=1e3)
+        agent.eval(n_timesteps=1e2)
+
 
 if __name__ == '__main__':
     unittest.main()
