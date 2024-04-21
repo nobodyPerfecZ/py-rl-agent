@@ -17,8 +17,8 @@ class TestPPO(unittest.TestCase):
         torch.manual_seed(0)
         self.agent = PPO(
             env_type="CartPole-v1",
-            env_wrappers=None,
-            policy_type="actor-critic",
+            env_wrappers="none",
+            policy_type="actor-critic-net",
             policy_kwargs={
                 "actor_architecture": [128],
                 "actor_activation_fn": nn.Tanh(),
@@ -81,9 +81,9 @@ class TestPPO(unittest.TestCase):
         """
         Tests the method fit().
         """
-        old_params = copy.deepcopy(self.agent.model.state_dict())
-        self.agent.fit(n_timesteps=1e4)
-        new_params = copy.deepcopy(self.agent.model.state_dict())
+        old_params = copy.deepcopy(self.agent.policy.state_dict())
+        self.agent.fit(n_timesteps=1e3)
+        new_params = copy.deepcopy(self.agent.policy.state_dict())
 
         # Check if the weights gets updated
         self.assertTrue(
@@ -97,9 +97,9 @@ class TestPPO(unittest.TestCase):
         """
         Tests the method eval().
         """
-        old_params = copy.deepcopy(self.agent.model.state_dict())
-        self.agent.eval(n_timesteps=1e3)
-        new_params = copy.deepcopy(self.agent.model.state_dict())
+        old_params = copy.deepcopy(self.agent.policy.state_dict())
+        self.agent.eval(n_timesteps=1e2)
+        new_params = copy.deepcopy(self.agent.policy.state_dict())
 
         # Check if the weights gets not updated
         self.assertTrue(

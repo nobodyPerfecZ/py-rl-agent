@@ -1,13 +1,15 @@
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Type, Union
 
 import gymnasium as gym
 
+from PyRLAgent.enum.abstract_enum import AbstractStrEnum
+from PyRLAgent.util.environment import get_env, transform_env
 from PyRLAgent.wrapper.observation import NormalizeObservationWrapper
 from PyRLAgent.wrapper.reward import NormalizeRewardWrapper
 
 
-class GymWrapperEnum(str, Enum):
+class GymWrapperEnum(AbstractStrEnum):
     """
     An enumeration of supported wrapper types.
     """
@@ -16,37 +18,28 @@ class GymWrapperEnum(str, Enum):
     NORMALIZE_REWARD = "normalize-reward"
 
     @classmethod
-    def wrapper(cls) -> dict[Enum, Any]:
-        """
-        Returns the wrapper dictionary, where
-            - `key` represents the wrapper type as enum
-            - `value` represents the wrapper class
-
-        Returns:
-            dict[Enum, Any]:
-                The wrapper of GymWrapperEnum
-        """
+    def wrapper(cls) -> dict[Enum, Type[gym.Wrapper]]:
         return {
             cls.NONE: None,
             cls.NORMALIZE_OBSERVATION: NormalizeObservationWrapper,
             cls.NORMALIZE_REWARD: NormalizeRewardWrapper,
         }
 
-    def to_wrapper(self, env: gym.Env, **wrapper_kwargs) -> Optional[gym.Env]:
-        """
-        Initialize the wrapped gymnasium environment given the arguments.
-
-        Args:
-            env (gym.Env):
-                The gymnasium environment
-
-            **wrapper_kwargs:
-                Additional arguments for the wrapper class
-
-        Returns:
-            gym.Env | None:
-                The wrapped gymnasium environment
-        """
+    def to(self, env: gym.Env, **wrapper_kwargs) -> Optional[gym.Env]:
         if self == GymWrapperEnum.NONE:
             return None
-        return GymWrapperEnum.wrapper()[self](env, **wrapper_kwargs)
+        return GymWrapperEnum.wrapper()[self](env=env, **wrapper_kwargs)
+
+    @staticmethod
+    def create_env(name: str, wrappers: Union[list[str], list["GymWrapperEnum"]], render_mode: Optional[str] = None) -> gym.Env:
+        # TODO: Add documentation
+        # Convert str to enums
+        wrappers = [GymWrapperEnum(wrapper) for wrapper in wrappers]
+
+        # Convert enum to the classes
+        wrappers = [GymWrapperEnum.wrapper()[wrapper] for wrapper in wrappers]
+
+        # Remove all nones from the wrappers
+        wrappers = [wrapper for wrapper in wrappers if wrapper is not None]
+
+        return transform_env(get_env(name, render_mode=render_mode), wrappers)

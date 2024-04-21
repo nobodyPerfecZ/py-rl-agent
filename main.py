@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import torch.nn as nn
 
-from PyRLAgent.algorithm.ddqn import ClippedDDQN
 from PyRLAgent.algorithm.ppo import PPO
 
 if __name__ == "__main__":
@@ -20,17 +19,17 @@ if __name__ == "__main__":
             "bias": True
         },
         optimizer_type="adamw",
-        optimizer_kwargs={"lr": 1e-3},
+        optimizer_kwargs={"lr": 5e-4},
         lr_scheduler_type="none",
         lr_scheduler_kwargs={},
         batch_size=32,
-        steps_per_trajectory=16,
+        steps_per_trajectory=32,
         clip_ratio=0.2,
         gamma=0.98,
         gae_lambda=0.8,
         target_kl=0.01,
         vf_coef=0.5,
-        ent_coef=0.0,
+        ent_coef=0.1,
         render_freq=50,
         gradient_steps=16,
     )

@@ -1,6 +1,5 @@
 from typing import Any, Dict, Type, Union
 
-import gymnasium as gym
 import torch
 from tqdm import tqdm
 
@@ -12,9 +11,8 @@ from PyRLAgent.enum.lr_scheduler import LRSchedulerEnum
 from PyRLAgent.enum.optimizer import OptimizerEnum
 from PyRLAgent.enum.policy import PolicyEnum
 from PyRLAgent.enum.wrapper import GymWrapperEnum
-from PyRLAgent.util.environment import get_env, transform_env
+from PyRLAgent.util.environment import get_env
 from PyRLAgent.util.interval_counter import IntervalCounter
-from PyRLAgent.util.mapping import get_values_enum
 
 
 class PPO(Algorithm):
@@ -104,26 +102,25 @@ class PPO(Algorithm):
             gradient_steps: int
     ):
         self.env_type = env_type
-        if isinstance(env_wrappers, (str, GymWrapperEnum)):
-            self.env_wrappers = GymWrapperEnum(env_wrappers)
-        else:
-            self.env_wrappers = [GymWrapperEnum(env_wrapper) for env_wrapper in env_wrappers]
-            print(self.env_wrappers)
+        self.env_wrappers = [env_wrappers] if isinstance(env_wrappers, (str, GymWrapperEnum)) else env_wrappers
         self.env = None
 
         self.policy_type = policy_type
-        self.model = PolicyEnum(self.policy_type).to(
+        self.policy_kwargs = policy_kwargs
+        self.policy = PolicyEnum(self.policy_type).to(
             observation_space=get_env(self.env_type, render_mode=None).observation_space,
             action_space=get_env(self.env_type, render_mode=None).action_space,
-            **policy_kwargs,
+            **self.policy_kwargs,
         )
 
-        self.replay_buffer: Buffer = RingBuffer(max_size=batch_size * steps_per_trajectory)
+        self.batch_size = batch_size
+        self.steps_per_trajectory = steps_per_trajectory
+        self.replay_buffer: Buffer = RingBuffer(max_size=self.batch_size * self.steps_per_trajectory)
 
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
         self.optimizer = OptimizerEnum(self.optimizer_type).to(
-            params=self.model.parameters(),
+            params=self.policy.parameters(),
             **self.optimizer_kwargs,
         )
 
@@ -154,24 +151,6 @@ class PPO(Algorithm):
         """
         # Reset the counters
         self.render_count.reset()
-
-    def create_env(self, render_mode: str = None) -> gym.Env:
-        if isinstance(self.env_wrappers, (str, GymWrapperEnum)):
-            # Case: Single wrapper is given
-            wrappers = [get_values_enum(GymWrapperEnum.wrapper(), self.env_wrappers)]
-        else:
-            # Case: Multiple wrappers are given
-            wrappers = get_values_enum(GymWrapperEnum.wrapper(), self.env_wrappers)
-
-        # Remove all none occurrences
-        wrappers = [wrapper for wrapper in wrappers if wrapper is not None]
-
-        if wrappers:
-            # Case: Wrappers are given
-            return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
-        else:
-            # Case: No wrappers are given
-            return get_env(self.env_type, render_mode=render_mode)
 
     def train(self):
         # Get the trajectories
@@ -280,7 +259,7 @@ class PPO(Algorithm):
 
         # Reshape advantage and targets back to (batch_size * num_steps)
         advantage = advantage.reshape(-1)
-        targets = advantage.reshape(-1)
+        targets = targets.reshape(-1)
 
         return advantage, targets
 
@@ -294,7 +273,7 @@ class PPO(Algorithm):
             targets: torch.Tensor,
     ) -> tuple[torch.Tensor, dict[str, Any]]:
         # Get the new log probabilities pi(a | s) and new values V(s)
-        pi, new_log_probs, new_values = self.model.forward(states, actions)
+        pi, new_log_probs, new_values = self.policy.forward(states, actions)
 
         # Actor loss
         ratio = torch.exp(new_log_probs - log_probs)
@@ -324,7 +303,7 @@ class PPO(Algorithm):
         return total_loss, loss_info
 
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
-        self.model.train()
+        self.policy.train()
 
         # Reset parameters
         self._reset()
@@ -332,7 +311,7 @@ class PPO(Algorithm):
         acc_reward = 0.0
 
         # Create the training environment
-        self.env = self.create_env(render_mode=None)
+        self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode=None)
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
@@ -342,7 +321,7 @@ class PPO(Algorithm):
         state, info = self.env.reset()
         for timestep in range(int(n_timesteps)):
             # Get the next action
-            _, action, log_prob, value = self.model.predict(state, return_all=True)
+            _, action, log_prob, value = self.policy.predict(state, return_all=True)
             action = action.item()
 
             # Do a step on the environment
@@ -384,7 +363,7 @@ class PPO(Algorithm):
         return rewards
 
     def eval(self, n_timesteps: Union[float, int]) -> list[float]:
-        self.model.eval()
+        self.policy.eval()
 
         # Reset parameters
         self._reset()
@@ -396,14 +375,14 @@ class PPO(Algorithm):
         old_timestep = 0
 
         # Create the environment
-        self.env = self.create_env(render_mode="human")
+        self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode="human")
         # self.env = get_env(self.env_type, render_mode="human")
 
         # Reset the environment
         state, info = self.env.reset()
         for timestep in range(int(n_timesteps)):
             # Get the next action
-            action = self.model.predict(state, return_all=False).item()
+            action = self.policy.predict(state, return_all=False).item()
 
             # Do a step on the environment
             next_state, reward, terminated, truncated, info = self.env.step(action)
@@ -439,7 +418,7 @@ class PPO(Algorithm):
     def __str__(self) -> str:
         header = f"{self.__class__.__name__}("
         env = f"env={self.env_type},"
-        model = f"model={self.model},"
+        policy = f"policy={self.policy},"
         replay_buffer = f"replay_buffer={self.replay_buffer},"
         optimizer = f"optimizer={self.optimizer},"
         steps_per_trajectory = f"steps_per_trajectory={self.steps_per_trajectory}"
@@ -453,7 +432,7 @@ class PPO(Algorithm):
         end = ")"
         return "\n".join(
             [
-                header, env, model, replay_buffer, optimizer, steps_per_trajectory, clip_ratio,
+                header, env, policy, replay_buffer, optimizer, steps_per_trajectory, clip_ratio,
                 gamma, gae_lambda, vf_coef, ent_coef, render_freq, gradient_steps, end
             ]
         )
@@ -464,12 +443,16 @@ class PPO(Algorithm):
     def __getstate__(self) -> dict:
         return {
             "env_type": self.env_type,
-            "model": self.model,
+            "env_wrappers": self.env_wrappers,
+            "policy_type": self.policy_type,
+            "policy_kwargs": self.policy_kwargs,
+            "policy": self.policy,
             "replay_buffer": self.replay_buffer,
             "optimizer_type": self.optimizer_type,
             "optimizer_kwargs": self.optimizer_kwargs,
             "lr_scheduler_type": self.lr_scheduler_type,
             "lr_scheduler_kwargs": self.lr_scheduler_kwargs,
+            "batch_size": self.batch_size,
             "steps_per_trajectory": self.steps_per_trajectory,
             "clip_ratio": self.clip_ratio,
             "gamma": self.gamma,
@@ -482,13 +465,16 @@ class PPO(Algorithm):
 
     def __setstate__(self, state: dict):
         self.env_type = state["env_type"]
+        self.env_wrappers = state["env_wrappers"]
         self.env = None
-        self.model = state["model"]
+        self.policy_type = state["policy_type"]
+        self.policy_kwargs = state["policy_kwargs"]
+        self.policy = state["policy"]
         self.replay_buffer = state["replay_buffer"]
         self.optimizer_type = state["optimizer_type"]
         self.optimizer_kwargs = state["optimizer_kwargs"]
         self.optimizer = OptimizerEnum(self.optimizer_type).to(
-            params=self.model.parameters(),
+            params=self.policy.parameters(),
             **self.optimizer_kwargs,
         )
         self.lr_scheduler_type = state["lr_scheduler_type"]
@@ -497,6 +483,7 @@ class PPO(Algorithm):
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs,
         )
+        self.batch_size = state["batch_size"]
         self.steps_per_trajectory = state["steps_per_trajectory"]
         self.clip_ratio = state["clip_ratio"]
         self.gamma = state["gamma"]

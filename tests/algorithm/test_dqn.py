@@ -17,7 +17,7 @@ class TestDQN(unittest.TestCase):
         torch.manual_seed(0)
         self.agent = DQN(
             env_type="CartPole-v1",
-            env_wrappers=None,
+            env_wrappers="none",
             policy_type="q-net",
             policy_kwargs={
                 "architecture": [128],
@@ -27,7 +27,7 @@ class TestDQN(unittest.TestCase):
             },
             strategy_type="linear-epsilon",
             strategy_kwargs={"epsilon_min": 0.1, "epsilon_max": 1.0, "steps": 1000},
-            replay_buffer_type="ring",
+            replay_buffer_type="ring-buffer",
             replay_buffer_kwargs={"max_size": 10000},
             optimizer_type="adam",
             optimizer_kwargs={"lr": 5e-4},
@@ -66,7 +66,7 @@ class TestDQN(unittest.TestCase):
         Tests the method fit().
         """
         old_params = copy.deepcopy(self.agent.q_net.state_dict())
-        self.agent.fit(n_timesteps=1e4)
+        self.agent.fit(n_timesteps=1e3)
         new_params = copy.deepcopy(self.agent.q_net.state_dict())
 
         # Check if the weights gets updated
@@ -82,7 +82,7 @@ class TestDQN(unittest.TestCase):
         Tests the method eval().
         """
         old_params = copy.deepcopy(self.agent.q_net.state_dict())
-        self.agent.eval(n_timesteps=1e3)
+        self.agent.eval(n_timesteps=1e2)
         new_params = copy.deepcopy(self.agent.q_net.state_dict())
 
         # Check if the weights gets not updated

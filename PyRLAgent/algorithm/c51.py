@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 
 from PyRLAgent.algorithm.dqn import DQN
-from PyRLAgent.algorithm.policy import QProbNetwork
 
 
 class C51(DQN):
@@ -57,9 +56,6 @@ class C51(DQN):
         loss_kwargs (Dict[str, Any]):
             Keyword arguments for initializing the loss function.
 
-        learning_starts (int):
-            The number of steps before starting Q-learning updates.
-
         max_gradient_norm (float | None):
             The maximum gradient norm for gradient clipping.
             If the value is None, then no gradient clipping is used.
@@ -87,17 +83,6 @@ class C51(DQN):
         gradient_steps (int):
             The number of gradient updates per training step.
     """
-
-    @property
-    def policy_mapping(self) -> dict[str, Any]:
-        return {"q-prob-net": QProbNetwork}
-
-    @property
-    def loss_fn_mapping(self) -> dict[str, Any]:
-        return {
-            "ce-logits": F.cross_entropy,
-            "kl-logits": lambda y_hat, y: F.kl_div(F.log_softmax(y_hat, dim=-1), torch.log(y), reduction="batchmean", log_target=True)
-        }
 
     def compute_loss(
             self,

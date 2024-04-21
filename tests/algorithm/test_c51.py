@@ -24,7 +24,7 @@ class TestC51(unittest.TestCase):
             },
             strategy_type="linear-epsilon",
             strategy_kwargs={"epsilon_min": 0.1, "epsilon_max": 1.0, "steps": 1000},
-            replay_buffer_type="ring",
+            replay_buffer_type="ring-buffer",
             replay_buffer_kwargs={"max_size": 10000},
             optimizer_type="adam",
             optimizer_kwargs={"lr": 5e-4},

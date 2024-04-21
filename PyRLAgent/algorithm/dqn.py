@@ -1,24 +1,22 @@
 import copy
 from typing import Any, Dict, Optional, Type, Union
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from tqdm import tqdm
 
 from PyRLAgent.algorithm.abstract_algorithm import Algorithm
 from PyRLAgent.common.policy.abstract_policy import DeterministicPolicy
 from PyRLAgent.enum.buffer import BufferEnum
+from PyRLAgent.enum.loss import LossEnum
 from PyRLAgent.enum.lr_scheduler import LRSchedulerEnum
 from PyRLAgent.enum.optimizer import OptimizerEnum
 from PyRLAgent.enum.policy import PolicyEnum
 from PyRLAgent.enum.strategy import StrategyEnum
 from PyRLAgent.enum.wrapper import GymWrapperEnum
-from PyRLAgent.util.environment import get_env, transform_env
+from PyRLAgent.util.environment import get_env
 from PyRLAgent.util.interval_counter import IntervalCounter
-from PyRLAgent.util.mapping import get_value, get_values
 
 
 class DQN(Algorithm):
@@ -73,7 +71,7 @@ class DQN(Algorithm):
         lr_scheduler_kwargs(Dict[str, Any]):
             Keyword arguments for initializing the learning rate scheduler.
 
-        loss_type (str | Type["F"]):
+        loss_type (str | LossEnum):
             The type of loss function used for training the policy.
             Either the name or the class itself can be given.
 
@@ -124,7 +122,7 @@ class DQN(Algorithm):
             optimizer_kwargs: Dict[str, Any],
             lr_scheduler_type: Union[str, LRSchedulerEnum],
             lr_scheduler_kwargs: Dict[str, Any],
-            loss_type: Union[str, Type["F"]],
+            loss_type: Union[str, LossEnum],
             loss_kwargs: Dict[str, Any],
             max_gradient_norm: Optional[float],
             batch_size: int,
@@ -136,15 +134,20 @@ class DQN(Algorithm):
             gradient_steps: int,
     ):
         self.env_type = env_type
-        self.env_wrappers = env_wrappers
+        self.env_wrappers = [env_wrappers] if isinstance(env_wrappers, (str, GymWrapperEnum)) else env_wrappers
         self.env = None
+
         self.policy_type = policy_type
+        self.policy_kwargs = policy_kwargs
+
+        self.strategy_type = strategy_type
+        self.strategy_kwargs = strategy_kwargs
         self.q_net = PolicyEnum(self.policy_type).to(
             observation_space=get_env(self.env_type).observation_space,
             action_space=get_env(self.env_type).action_space,
-            **policy_kwargs,
-            strategy_type=strategy_type,
-            strategy_kwargs=strategy_kwargs,
+            **self.policy_kwargs,
+            strategy_type=self.strategy_type,
+            strategy_kwargs=self.strategy_kwargs,
         )
         self.target_q_net = copy.deepcopy(self.q_net)
         self.target_q_net.freeze()
@@ -169,8 +172,9 @@ class DQN(Algorithm):
             **self.lr_scheduler_kwargs
         )
 
-        self.loss_fn = get_value(self.loss_fn_mapping, loss_type)
+        self.loss_type = loss_type
         self.loss_kwargs = loss_kwargs
+        self.loss_fn = LossEnum(self.loss_type).to()
 
         self.max_gradient_norm = max_gradient_norm
         self.batch_size = batch_size
@@ -185,21 +189,6 @@ class DQN(Algorithm):
         self.target_count = IntervalCounter(initial_value=0, modulo=self.target_freq)
         self.train_count = IntervalCounter(initial_value=0, modulo=self.train_freq)
         self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
-
-    @property
-    def loss_fn_mapping(self) -> dict[str, Any]:
-        """
-        Returns the mapping between keys and loss function classes.
-
-        Returns:
-            dict[str, Any]:
-                The mapping between keys and loss function classes
-        """
-        return {
-            "mae": F.l1_loss,
-            "mse": F.mse_loss,
-            "huber": F.huber_loss,
-        }
 
     def _reset(self):
         """
@@ -233,24 +222,6 @@ class DQN(Algorithm):
 
         # Update the counter for soft updates
         self.target_count.increment()
-
-    def create_env(self, render_mode: str = None) -> gym.Env:
-        if isinstance(self.env_wrappers, (str, GymWrapperEnum)):
-            # Case: Single wrapper is given
-            wrappers = [get_value(GymWrapperEnum.wrapper(), self.env_wrappers)]
-        else:
-            # Case: Multiple wrappers are given
-            wrappers = get_values(GymWrapperEnum.wrapper(), self.env_wrappers)
-
-        # Remove all none occurrences
-        wrappers = [wrapper for wrapper in wrappers if wrapper is not None]
-
-        if wrappers:
-            # Case: Wrappers are given
-            return transform_env(get_env(self.env_type, render_mode=render_mode), wrappers)
-        else:
-            # Case: No wrappers are given
-            return get_env(self.env_type, render_mode=render_mode)
 
     def train(self):
         """
@@ -376,7 +347,7 @@ class DQN(Algorithm):
         acc_reward = 0.0
 
         # Create the environment
-        self.env = self.create_env(render_mode=None)
+        self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode=None)
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
@@ -448,7 +419,11 @@ class DQN(Algorithm):
         acc_reward = 0.0
 
         # Create the environment
-        self.env = self.create_env(render_mode="human")
+        self.env = GymWrapperEnum.create_env(
+            name=self.env_type,
+            wrappers=self.env_wrappers,
+            render_mode="human"
+        )
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
@@ -502,7 +477,7 @@ class DQN(Algorithm):
         target_q_net = f"target_q_net={self.target_q_net},"
         replay_buffer = f"replay_buffer={self.replay_buffer},"
         optimizer = f"optimizer={self.optimizer},"
-        loss_fn = f"loss_fn={self.loss_fn},"
+        loss_fn = f"loss_fn=,{self.loss_fn}"
         max_gradient_norm = f"max_gradient_norm={self.max_gradient_norm},"
         batch_size = f"batch_size={self.batch_size},"
         tau = f"tau={self.tau},"
@@ -533,8 +508,9 @@ class DQN(Algorithm):
             "optimizer_kwargs": self.optimizer_kwargs,
             "lr_scheduler_type": self.lr_scheduler_type,
             "lr_scheduler_kwargs": self.lr_scheduler_kwargs,
-            "loss_fn": self.loss_fn,
+            "loss_type": self.loss_type,
             "loss_kwargs": self.loss_kwargs,
+            "loss_fn": self.loss_fn,
             "max_gradient_norm": self.max_gradient_norm,
             "batch_size": self.batch_size,
             "tau": self.tau,
@@ -567,8 +543,10 @@ class DQN(Algorithm):
             optimizer=self.optimizer,
             **self.lr_scheduler_kwargs
         )
-        self.loss_fn = state["loss_fn"]
+        self.loss_type = state["loss_type"]
         self.loss_kwargs = state["loss_kwargs"]
+        self.loss_fn = state["loss_fn"]
+
         self.max_gradient_norm = state["max_gradient_norm"]
         self.batch_size = state["batch_size"]
         self.tau = state["tau"]
