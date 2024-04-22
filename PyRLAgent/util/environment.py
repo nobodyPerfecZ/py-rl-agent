@@ -5,11 +5,14 @@ import gymnasium as gym
 
 def get_env(name: str, **env_kwargs) -> gym.Env:
     """
-    Creates a Gymnasium environment given the name and kwargs.
+    Creates a single Gymnasium environment given the name and kwargs.
 
     Args:
         name (str):
             The name of the Gymnasium environment
+
+        **env_kwargs:
+            Additional parameters to the environment
 
     Returns:
         gym.Env:
@@ -17,6 +20,28 @@ def get_env(name: str, **env_kwargs) -> gym.Env:
     """
     env = gym.make(name, **env_kwargs)
     return env
+
+
+def get_vector_env(name: str, num_envs: int, **env_kwargs) -> gym.vector.VectorEnv:
+    """
+    Creates NUM_ENVS Gymnasium environments given the name and kwargs.
+
+    Args:
+        name (str):
+            The name of the Gymnasium environments
+
+        num_envs (int):
+            The number of parallel Gymnasium environments
+
+        **env_kwargs:
+            Additional parameters to the environments
+
+    Returns:
+        gym.vector.VectorEnv:
+            The Gymnasium environment with the specified kwargs
+    """
+    envs = gym.vector.make(name, num_envs=num_envs, **env_kwargs)
+    return envs
 
 
 def transform_env(env: gym.Env, wrappers: Union[Type[gym.Wrapper], list[Type[gym.Wrapper]]]) -> gym.Env:
