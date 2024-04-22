@@ -80,24 +80,6 @@ class RingBuffer(Buffer):
         indices = torch.randint(0, len(self), size=(batch_size,))
         return [self.memory[idx] for idx in indices]
 
-    def _get_trajectories(self, batch_size: int, steps_per_trajectory: int) -> list[Transition]:
-        if batch_size <= 0:
-            raise ValueError(
-                "Illegal batch_size. "
-                "The argument should be >= 1!"
-            )
-        if steps_per_trajectory <= 0:
-            raise ValueError(
-                "Illegal steps_per_trajectory. "
-                "The argument should be >= 1!"
-            )
-        if not self.filled(batch_size * steps_per_trajectory):
-            raise ValueError(
-                "Illegal call of get_trajectories()!"
-                "There are not enough transitions stored to return from the buffer!"
-            )
-        return [self.memory[idx] for idx in range(batch_size * steps_per_trajectory)]
-
     def __len__(self) -> int:
         return self.memory.__len__()
 
@@ -110,7 +92,7 @@ class RingBuffer(Buffer):
     def __eq__(self, other) -> bool:
         if isinstance(other, RingBuffer):
             return self.max_size == other.max_size and \
-                   all(item1 == item2 for item1, item2 in zip(self.memory, other.memory))
+                all(item1 == item2 for item1, item2 in zip(self.memory, other.memory))
         raise NotImplementedError
 
     def __getstate__(self) -> dict:
