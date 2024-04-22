@@ -249,21 +249,13 @@ class PPO(Algorithm):
         values = values.reshape(self.batch_size, self.steps_per_trajectory)
 
         # Compute temporal difference errors (deltas)
-        delta = torch.zeros(rewards.shape)
-
-        # Extreme case T := delta_T = r_T - V(s_T)
-        delta[:, -1] = rewards[:, -1] - values[:, -1]
-
-        # All other cases t := delta_t = r_t + gamma * (1-dones) * V(s_t+1) - V(s_t)
-        delta[:, :-1] = rewards[:, :-1] + self.gamma * values[:, 1:] * ~dones[:, :-1] - values[:, :-1]
+        # delta_t = r_t + gamma * (1-dones) * V(s_t+1) - V(s_t)
+        delta = rewards[:, :-1] + self.gamma * ~dones[:, :-1] * values[:, 1:] - values[:, :-1]
 
         # Compute advantages using Generalized Advantage Estimation (GAE)
         advantage = torch.zeros(rewards.shape)
 
-        # Extreme case T := A_T = delta_T
-        advantage[:, -1] = delta[:, -1]
-
-        # All other cases t := A_t = delta_t + gamma * gae_lambda * (1-dones) * A_t+1
+        # A_t = delta_t + gamma * gae_lambda * (1-dones) * A_t+1
         for t in reversed(range(self.steps_per_trajectory - 1)):
             advantage[:, t] = delta[:, t] + self.gamma * self.gae_lambda * ~dones[:, t] * advantage[:, t + 1]
 
