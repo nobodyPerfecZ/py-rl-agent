@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Type, Union
 
+import numpy as np
 import torch
 from torch import nn
 from tqdm import tqdm
@@ -54,8 +55,8 @@ class PPO(Algorithm):
             The maximum gradient norm for gradient clipping.
             If the value is None, then no gradient clipping is used.
 
-        batch_size (int):
-            The batch size (number of different actors) N.
+        num_envs (int):
+            The number of different actors N.
 
         steps_per_trajectory (int):
             The number of timesteps T.
@@ -95,7 +96,7 @@ class PPO(Algorithm):
             lr_scheduler_type: Union[str, LRSchedulerEnum],
             lr_scheduler_kwargs: Dict[str, Any],
             max_gradient_norm: Optional[float],
-            batch_size: int,
+            num_envs: int,
             steps_per_trajectory: int,
             clip_ratio: float,
             gamma: float,
@@ -118,9 +119,9 @@ class PPO(Algorithm):
             **self.policy_kwargs,
         )
 
-        self.batch_size = batch_size
+        self.num_envs = num_envs
         self.steps_per_trajectory = steps_per_trajectory
-        self.replay_buffer = RingBuffer(max_size=self.batch_size * self.steps_per_trajectory)
+        self.replay_buffer = RingBuffer(max_size=self.num_envs * self.steps_per_trajectory)
 
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
@@ -166,7 +167,7 @@ class PPO(Algorithm):
 
     def train(self):
         # Get the trajectories
-        samples = self.replay_buffer.get(self.batch_size * self.steps_per_trajectory)
+        samples = self.replay_buffer.get(self.steps_per_trajectory)
 
         # Calculate the advantages, targets according to Generalized Advantage Estimation (GAE)
         advantages, targets = self.compute_gae(
@@ -221,35 +222,31 @@ class PPO(Algorithm):
 
         Args:
             rewards (torch.Tensor):
-                Tensor of shape [batch_size *  num_steps]
+                Tensor of shape [num_envs, num_steps]
                 Minibatch of rewards r
 
             dones (torch.Tensor):
-                Tensor of shape [batch_size * num_steps]
+                Tensor of shape [num_envs, num_steps]
                 Minibatch of dones
 
             values (torch.Tensor):
-                Tensor of shape [batch_size * num_steps]
+                Tensor of shape [num_envs, num_steps]
                 Minibatch of values V(s)
 
         Returns:
             tuple[torch.Tensor, torch.Tensor]:
 
                 advantages (torch.Tensor):
-                    Tensor of shape [batch_size * num_steps]
+                    Tensor of shape [num_envs, num_steps]
                     Minibatch of computed advantages
 
                 targets (torch.Tensor):
-                    Tensor of shape [batch_size * num_steps]
+                    Tensor of shape [num_envs, num_steps]
                     Minibatch of computed targets
         """
-        # Reshape rewards, dones and values to (batch_size, num_steps)
-        rewards = rewards.reshape(self.batch_size, self.steps_per_trajectory)
-        dones = dones.reshape(self.batch_size, self.steps_per_trajectory)
-        values = values.reshape(self.batch_size, self.steps_per_trajectory)
-
         # Compute temporal difference errors (deltas)
         # delta_t = r_t + gamma * (1-dones) * V(s_t+1) - V(s_t)
+
         delta = rewards[:, :-1] + self.gamma * ~dones[:, :-1] * values[:, 1:] - values[:, :-1]
 
         # Compute advantages using Generalized Advantage Estimation (GAE)
@@ -266,8 +263,8 @@ class PPO(Algorithm):
         targets = advantage + values
 
         # Reshape advantage and targets back to (batch_size * num_steps)
-        advantage = advantage.reshape(-1)
-        targets = targets.reshape(-1)
+        # advantage = advantage.reshape(-1)
+        # targets = targets.reshape(-1)
 
         return advantage, targets
 
@@ -307,7 +304,6 @@ class PPO(Algorithm):
 
         # Compute extra information
         loss_info = {"kl": (log_probs - new_log_probs).mean().item()}
-
         return total_loss, loss_info
 
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
@@ -319,7 +315,7 @@ class PPO(Algorithm):
         acc_reward = 0.0
 
         # Create the training environment
-        self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode=None)
+        self.env = GymWrapperEnum.create_vector_env(name=self.env_type, num_envs=self.num_envs, wrappers=self.env_wrappers, render_mode=None)
 
         # Create the progress bar
         progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
@@ -327,27 +323,29 @@ class PPO(Algorithm):
 
         # Reset the environment
         state, info = self.env.reset()
-        for timestep in range(int(n_timesteps)):
+        for timestep in range(0, int(n_timesteps), self.num_envs):
             # Get the next action
             _, action, log_prob, value = self.policy.predict(state, return_all=True)
-            action = action.item()
+            action = action.numpy()
+            log_prob = log_prob.numpy()
+            value = value.numpy()
 
             # Do a step on the environment
             next_state, reward, terminated, truncated, info = self.env.step(action)
-            done = terminated or truncated
-            acc_reward += reward
+            done = np.logical_or(terminated,  truncated)
+            acc_reward += np.mean(reward)  # TODO
 
             # Update the replay buffer by pushing the given transition
-            self.replay_buffer.push(state, action, float(reward), next_state, done, log_prob, value)
+            self.replay_buffer.push(state, action, reward, next_state, done, log_prob, value)
 
             # Update the state
             state = next_state
 
-            if self.replay_buffer.filled(self.batch_size * self.steps_per_trajectory):
+            if self.replay_buffer.filled(self.steps_per_trajectory):
                 # Case: Update the Actor-Critic Network
                 self.train()
 
-            if done:
+            if np.any(done):
                 # Case: End of episode is reached
                 if self.render_count.is_interval_reached():
                     progressbar.set_postfix_str(f"{acc_reward:.2f}return")
@@ -360,8 +358,6 @@ class PPO(Algorithm):
                 # Append accumulated rewards to the list of rewards for each episode
                 rewards += [acc_reward]
 
-                # Reset the environment
-                state, info = self.env.reset()
                 acc_reward = 0
                 continue
 
@@ -461,7 +457,7 @@ class PPO(Algorithm):
             "lr_scheduler_type": self.lr_scheduler_type,
             "lr_scheduler_kwargs": self.lr_scheduler_kwargs,
             "max_gradient_norm": self.max_gradient_norm,
-            "batch_size": self.batch_size,
+            "num_envs": self.num_envs,
             "steps_per_trajectory": self.steps_per_trajectory,
             "clip_ratio": self.clip_ratio,
             "gamma": self.gamma,
@@ -495,7 +491,7 @@ class PPO(Algorithm):
             **self.lr_scheduler_kwargs,
         )
         self.max_gradient_norm = state["max_gradient_norm"]
-        self.batch_size = state["batch_size"]
+        self.num_envs = state["num_envs"]
         self.steps_per_trajectory = state["steps_per_trajectory"]
         self.clip_ratio = state["clip_ratio"]
         self.gamma = state["gamma"]

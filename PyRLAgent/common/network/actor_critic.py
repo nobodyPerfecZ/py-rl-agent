@@ -112,7 +112,7 @@ class CriticNetwork(nn.Module):
         self.critic = critic
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.critic(x)
+        return self.critic(x).squeeze(dim=-1)
 
 
 class ActorCriticNetwork(nn.Module):

@@ -10,10 +10,10 @@ if __name__ == "__main__":
         env_wrappers="none",
         policy_type="actor-critic-net",
         policy_kwargs={
-            "actor_architecture": [256, 256],
+            "actor_architecture": [64],
             "actor_activation_fn": nn.Tanh(),
             "actor_output_activation_fn": None,
-            "critic_architecture": [256, 256],
+            "critic_architecture": [64],
             "critic_activation_fn": nn.Tanh(),
             "critic_output_activation_fn": None,
             "bias": True
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         lr_scheduler_type="none",
         lr_scheduler_kwargs={},
         max_gradient_norm=1.0,
-        batch_size=32,
+        num_envs=32,
         steps_per_trajectory=64,
         clip_ratio=0.2,
         gamma=0.98,

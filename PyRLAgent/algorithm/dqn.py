@@ -357,18 +357,19 @@ class DQN(Algorithm):
         state, info = self.env.reset()
         for timestep in range(int(n_timesteps)):
             # Get the next action
-            action = self.q_net.predict(state, deterministic=False).item()
+            action = self.q_net.predict(state, deterministic=False)
+            action = action.numpy()
 
             # Do a step on the environment
             next_state, reward, terminated, truncated, info = self.env.step(action)
-            done = terminated or truncated
+            done = np.logical_or(terminated, truncated)
             acc_reward += reward
 
             # Update the exploration strategy with the given transition
-            self.q_net.update_strategy(state, action, float(reward), next_state, done)
+            self.q_net.update_strategy(state, action, reward, next_state, done)
 
             # Update the replay buffer by pushing the given transition
-            self.replay_buffer.push(state, action, float(reward), next_state, done)
+            self.replay_buffer.push(state, action, reward, next_state, done)
 
             # Update the state
             state = next_state

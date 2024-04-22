@@ -33,7 +33,7 @@ class TestPPO(unittest.TestCase):
             lr_scheduler_type="linear-lr",
             lr_scheduler_kwargs={"start_factor": 1.0, "end_factor": 0.8, "total_iters": 100000},
             max_gradient_norm=1.0,
-            batch_size=32,
+            num_envs=32,
             steps_per_trajectory=16,
             clip_ratio=0.2,
             gamma=0.98,

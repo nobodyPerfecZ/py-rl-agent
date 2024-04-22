@@ -175,19 +175,19 @@ class Buffer(ABC):
         samples = self._get(batch_size)
 
         # Convert list[Transition] to a single Transition with matrices
-        states = torch.tensor(np.array([t.state for t in samples])).to(dtype=torch.float32)
-        actions = torch.tensor(np.array([t.action for t in samples])).to(dtype=torch.int64)
-        rewards = torch.tensor(np.array([t.reward for t in samples])).to(dtype=torch.float32)
-        next_states = torch.tensor(np.array([t.next_state for t in samples])).to(dtype=torch.float32)
-        dones = torch.tensor(np.array([t.done for t in samples])).to(dtype=torch.bool)
+        states = torch.tensor(np.stack([t.state for t in samples], axis=1)).to(dtype=torch.float32)
+        actions = torch.tensor(np.stack([t.action for t in samples], axis=1)).to(dtype=torch.int64)
+        rewards = torch.tensor(np.stack([t.reward for t in samples], axis=1)).to(dtype=torch.float32)
+        next_states = torch.tensor(np.stack([t.next_state for t in samples], axis=1)).to(dtype=torch.float32)
+        dones = torch.tensor(np.stack([t.done for t in samples], axis=1)).to(dtype=torch.bool)
 
         log_probs = None
         if samples[0].log_prob is not None:
-            log_probs = torch.tensor([t.log_prob for t in samples]).to(dtype=torch.float32)
+            log_probs = torch.tensor(np.stack([t.log_prob for t in samples], axis=1)).to(dtype=torch.float32)
 
         values = None
         if samples[0].value is not None:
-            values = torch.tensor([t.value for t in samples]).to(dtype=torch.float32)
+            values = torch.tensor(np.stack([t.value for t in samples], axis=1)).to(dtype=torch.float32)
 
         return Transition(states, actions, rewards, next_states, dones, log_probs, values)
 
