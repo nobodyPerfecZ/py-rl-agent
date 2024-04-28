@@ -82,7 +82,7 @@ class DQN(Algorithm):
             The maximum gradient norm for gradient clipping.
             If the value is None, then no gradient clipping is used.
 
-        batch_size (int):
+        steps_per_trajectory (int):
             The batch size for the gradient upgrades.
 
         tau (float):
@@ -94,14 +94,6 @@ class DQN(Algorithm):
         target_freq (int):
             The frequency of target network updates.
             After N gradient updates, the target network will be updated.
-
-        train_freq (int):
-            The number of steps during training gradients.
-            After N steps, a training step will be performed.
-
-        render_freq (int):
-            The frequency of rendering the environment.
-            After N episodes the environment gets rendered.
 
         gradient_steps (int):
             The number of gradient updates per training step.
@@ -125,11 +117,11 @@ class DQN(Algorithm):
             loss_type: Union[str, LossEnum],
             loss_kwargs: Dict[str, Any],
             max_gradient_norm: Optional[float],
-            batch_size: int,
+            num_envs: int,
+            steps_per_trajectory: int,
             tau: float,
             gamma: float,
             target_freq: int,
-            train_freq: int,
             gradient_steps: int,
     ):
         self.env_type = env_type
@@ -176,28 +168,16 @@ class DQN(Algorithm):
         self.loss_fn = LossEnum(self.loss_type).to()
 
         self.max_gradient_norm = max_gradient_norm
-        self.batch_size = batch_size
+        self.num_envs = num_envs
+        self.steps_per_trajectory = steps_per_trajectory
         self.tau = tau
         self.gamma = gamma
 
         self.target_freq = target_freq
-        self.train_freq = train_freq
-        self.render_freq = render_freq
         self.gradient_steps = gradient_steps
 
         self.target_count = IntervalCounter(initial_value=0, modulo=self.target_freq)
-        self.train_count = IntervalCounter(initial_value=0, modulo=self.train_freq)
-        self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
-
-    def _reset(self):
-        """
-        Resets the environments to the start state and counters to 0.
-        This method is necessary before starting with training the agent.
-        """
-        # Reset the counters
-        self.target_count.reset()
-        self.train_count.reset()
-        self.render_count.reset()
+        self.train_count = IntervalCounter(initial_value=0, modulo=self.num_envs * self.steps_per_trajectory)
 
     def _apply_gradient_norm(self):
         """
@@ -214,13 +194,8 @@ class DQN(Algorithm):
         The soft update is performed by blending the current target network parameters with the current model
         network parameters based on the given tau.
         """
-        if self.target_count.is_interval_reached():
-            # Case: Update the target network with a fraction of the current network
-            for model_params, target_params in zip(self.q_net.parameters(), self.target_q_net.parameters()):
-                target_params.copy_(self.tau * model_params + (1 - self.tau) * target_params)
-
-        # Update the counter for soft updates
-        self.target_count.increment()
+        for model_params, target_params in zip(self.q_net.parameters(), self.target_q_net.parameters()):
+            target_params.copy_(self.tau * model_params + (1 - self.tau) * target_params)
 
     def train(self):
         """
@@ -232,50 +207,41 @@ class DQN(Algorithm):
 
         After updating the Q-network parameters we apply gradient clipping and soft update of the target network.
         """
-        if self.train_count.is_interval_reached():
-            # Case: Update the Q-Network
-            self.q_net.train()
-            self.target_q_net.eval()
+        for _ in range(self.gradient_steps):
+            # Get the trajectories
+            samples = self.replay_buffer.sample(self.steps_per_trajectory)
 
-            losses = []
-            for _ in range(self.gradient_steps):
-                # Sample from replay buffer
-                samples = self.replay_buffer.sample(self.batch_size)
+            # Reset the gradients to zero
+            self.optimizer.zero_grad()
 
-                # Reset the gradients to zero
-                self.optimizer.zero_grad()
+            # Compute the DQN Loss function
+            loss, loss_info = self.compute_loss(
+                states=samples.state,
+                actions=samples.action,
+                rewards=samples.reward,
+                next_states=samples.next_state,
+                dones=samples.done
+            )
 
-                # Compute the DQN Loss function
-                loss, loss_info = self.compute_loss(
-                    states=samples.state,
-                    actions=samples.action,
-                    rewards=samples.reward,
-                    next_states=samples.next_state,
-                    dones=samples.done
-                )
+            # Perform the backpropagation
+            loss.backward()
 
-                # Perform the backpropagation
-                loss.backward()
+            # Clip the gradients
+            self._apply_gradient_norm()
 
-                # Clip the gradients
-                self._apply_gradient_norm()
-
-                # Perform the update step
-                self.optimizer.step()
-
-                losses.append(loss.item())
-
-            # Perform a learning rate scheduler update
-            if self.lr_scheduler:
-                self.lr_scheduler.step()
+            # Perform the update step
+            self.optimizer.step()
 
             # Perform a soft update
-            self._soft_update()
+            if self.target_count.is_interval_reached():
+                self._soft_update()
 
-            return np.mean(losses)
+            # Update the counter
+            self.target_count.increment()
 
-        # Update the train count
-        self.train_count.increment()
+        # Perform a learning rate scheduler update
+        if self.lr_scheduler:
+            self.lr_scheduler.step()
 
     def compute_loss(
             self,
@@ -285,76 +251,41 @@ class DQN(Algorithm):
             next_states: torch.Tensor,
             dones: torch.Tensor,
     ) -> tuple[torch.Tensor, dict[str, Any]]:
-        """
-        Computes the loss between the predicted q-values and the q-targets based on the given loss function.
-
-        In DQN (with target network) the update rule is:
-            - loss = L(Q_predicted, Q_target), where
-            - Q_predicted := Q(s,a)
-            - Q_target := r(s,a) + gamma * max_a' Q_target(s', a')
-
-        Args:
-            states (torch.Tensor):
-                Minibatch of states s
-
-            actions (torch.Tensor):
-                Minibatch of actions a
-
-            rewards (torch.Tensor):
-                Minibatch of rewards r
-
-            next_states (torch.Tensor):
-                Minibatch of next_states s'
-
-            dones (torch.Tensor):
-                Minibatch of dones
-
-        Returns:
-            torch.Tensor:
-                Loss between predicted and target Q-Values
-        """
-
         # Calculate the target q-values (TD-Target)
         with torch.no_grad():
             Q_next = self.target_q_net.forward(next_states)
-            q_targets = rewards + ~dones * self.gamma * Q_next.max(dim=1)[0]
+            targets = rewards + ~dones * self.gamma * Q_next.max(dim=-1)[0]
 
         # Calculate the predicted q-values
         Q = self.q_net.forward(states)
-        q_values = Q.gather(dim=1, index=actions.unsqueeze(1)).squeeze()
+        predicted = Q.gather(dim=-1, index=actions.unsqueeze(-1)).squeeze()
 
-        return self.loss_fn(q_values, q_targets, **self.loss_kwargs), {}
+        return self.loss_fn(
+            predicted.reshape(self.num_envs * self.steps_per_trajectory, -1),
+            targets.reshape(self.num_envs * self.steps_per_trajectory, -1),
+            **self.loss_kwargs
+        ), {}
 
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
-        """
-        Trains the agent for a specified number of timesteps.
-
-        This function represents the main training loop, where the agent interacts with the environment for n_timestep
-        steps.
-
-        Args:
-            n_timesteps (Union[float, int]):
-                The number of steps to train the agent.
-
-        Returns:
-            list[float]:
-                Accumulated rewards for each episode during training
-        """
         # Reset parameters
-        self._reset()
+        self.q_net.train()
+        self.target_count.reset()
+        self.train_count.reset()
         rewards = []
         acc_reward = 0.0
+        progressbar = tqdm(total=int(n_timesteps))
 
-        # Create the environment
-        self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode=None)
-
-        # Create the progress bar
-        progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
-        old_timestep = 0
+        # Create the training environment
+        self.env = GymWrapperEnum.create_vector_env(
+            name=self.env_type,
+            num_envs=self.num_envs,
+            wrappers=self.env_wrappers,
+            render_mode=None
+        )
 
         # Reset the environment
         state, info = self.env.reset()
-        for timestep in range(int(n_timesteps)):
+        for _ in range(0, int(n_timesteps), self.num_envs):
             # Get the next action
             action = self.q_net.predict(state, deterministic=False)
             action = action.numpy()
@@ -362,7 +293,7 @@ class DQN(Algorithm):
             # Do a step on the environment
             next_state, reward, terminated, truncated, info = self.env.step(action)
             done = np.logical_or(terminated, truncated)
-            acc_reward += reward
+            acc_reward += np.mean(reward)
 
             # Update the exploration strategy with the given transition
             self.q_net.update_strategy(state, action, reward, next_state, done)
@@ -373,66 +304,35 @@ class DQN(Algorithm):
             # Update the state
             state = next_state
 
-            if self.replay_buffer.filled(self.batch_size):
+            if self.train_count.is_interval_reached() and self.replay_buffer.filled(self.steps_per_trajectory):
                 # Case: Update the Q-Network
                 self.train()
 
-            if done:
-                # Case: End of episode is reached
-                if self.render_count.is_interval_reached():
-                    progressbar.set_postfix_str(f"{acc_reward:.2f}return")
-                    progressbar.update(timestep - old_timestep)
-                    old_timestep = timestep
+            # Update the progressbar
+            progressbar.update(self.num_envs)
 
-                # Update render count
-                self.render_count.increment()
-
-                # Append accumulated rewards to the list of rewards for each episode
-                rewards += [acc_reward]
-
-                # Reset the environment
-                state, info = self.env.reset()
-                acc_reward = 0
-                continue
+            # Update the counter
+            self.train_count.increment(self.num_envs)
 
         # Close all necessary objects
-        progressbar.close()
         self.env.close()
+        progressbar.close()
         return rewards
 
     def eval(self, n_timesteps: Union[float, int]):
-        """
-        The main evaluation loop, where the agent is tested for N episodes with an episode length of L.
-        So that means no backpropagation (upgrading weights with gradients) are performed here.
-
-        Args:
-            n_timesteps (Union[float, int]):
-                The number of steps to train the agent.
-
-        Returns:
-            list[float]:
-                Accumulated rewards for each episode during training
-        """
         # Reset parameters
-        self._reset()
+        self.q_net.eval()
+        self.target_count.reset()
+        self.train_count.reset()
         rewards = []
         acc_reward = 0.0
 
         # Create the environment
-        self.env = GymWrapperEnum.create_env(
-            name=self.env_type,
-            wrappers=self.env_wrappers,
-            render_mode="human"
-        )
-
-        # Create the progress bar
-        progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
-        old_timestep = 0
+        self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode="human")
 
         # Reset the environment
         state, info = self.env.reset()
-
-        for timestep in range(int(n_timesteps)):
+        for timestep in tqdm(range(int(n_timesteps))):
             # Get the next action
             action = self.q_net.predict(state, deterministic=True).item()
 
@@ -441,22 +341,10 @@ class DQN(Algorithm):
             done = terminated or truncated
             acc_reward += reward
 
-            # Update the exploration strategy with the given transition
-            self.q_net.update_strategy(state, action, float(reward), next_state, done)
-
             # Update the state
             state = next_state
 
             if done:
-                # Case: End of episode is reached
-                if self.render_count.is_interval_reached():
-                    progressbar.set_postfix_str(f"{acc_reward:.2f}return")
-                    progressbar.update(timestep - old_timestep)
-                    old_timestep = timestep
-
-                # Update render count
-                self.render_count.increment()
-
                 # Append accumulated rewards to the list of rewards for each episode
                 rewards += [acc_reward]
 
@@ -466,7 +354,6 @@ class DQN(Algorithm):
                 continue
 
         # Close all necessary objects
-        progressbar.close()
         self.env.close()
         return rewards
 
@@ -479,18 +366,16 @@ class DQN(Algorithm):
         optimizer = f"optimizer={self.optimizer},"
         loss_fn = f"loss_fn=,{self.loss_fn}"
         max_gradient_norm = f"max_gradient_norm={self.max_gradient_norm},"
-        batch_size = f"batch_size={self.batch_size},"
+        batch_size = f"batch_size={self.steps_per_trajectory},"
         tau = f"tau={self.tau},"
         gamma = f"gamma={self.gamma},"
         target_freq = f"target_freq={self.target_freq},"
-        train_freq = f"train_freq={self.train_freq},"
-        render_freq = f"render_freq={self.render_freq},"
         gradient_steps = f"gradient_steps={self.gradient_steps},"
         end = ")"
         return "\n".join(
             [
                 header, env, q_net, target_q_net, replay_buffer, optimizer, loss_fn, max_gradient_norm, batch_size,
-                tau, gamma, target_freq, train_freq, render_freq, gradient_steps, end
+                tau, gamma, target_freq, gradient_steps, end
             ]
         )
 
@@ -513,16 +398,13 @@ class DQN(Algorithm):
             "loss_kwargs": self.loss_kwargs,
             "loss_fn": self.loss_fn,
             "max_gradient_norm": self.max_gradient_norm,
-            "batch_size": self.batch_size,
+            "batch_size": self.steps_per_trajectory,
             "tau": self.tau,
             "gamma": self.gamma,
             "target_freq": self.target_freq,
-            "train_freq": self.train_freq,
-            "render_freq": self.render_freq,
             "gradient_steps": self.gradient_steps,
             "target_count": self.target_count,
             "train_count": self.train_count,
-            "render_count": self.render_count,
         }
 
     def __setstate__(self, state: dict):
@@ -550,13 +432,10 @@ class DQN(Algorithm):
         self.loss_fn = state["loss_fn"]
 
         self.max_gradient_norm = state["max_gradient_norm"]
-        self.batch_size = state["batch_size"]
+        self.steps_per_trajectory = state["batch_size"]
         self.tau = state["tau"]
         self.gamma = state["gamma"]
         self.target_freq = state["target_freq"]
-        self.train_freq = state["train_freq"]
-        self.render_freq = state["render_freq"]
         self.gradient_steps = state["gradient_steps"]
         self.target_count = state["target_count"]
         self.train_count = state["train_count"]
-        self.render_count = state["render_count"]

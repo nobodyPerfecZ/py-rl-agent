@@ -46,9 +46,9 @@ class EpsilonGreedy(Strategy, ABC):
 
     def choose_action(self, state: np.ndarray, output: torch.Tensor) -> torch.Tensor:
         if torch.rand(1) < self.epsilon:
-            # Case: Choose a random action
-            size = () if output.dim() == 1 else (output.size()[0],)
-            actions = torch.randint(0, len(output), size=size)
+            # Case: Choose random actions
+            n_actions = output.shape[-1]
+            actions = torch.randint(0, n_actions, size=output.shape[:-1])
         else:
             # Case: Choose the best actions that maximizes the Q-values
             actions = torch.argmax(output, dim=-1)

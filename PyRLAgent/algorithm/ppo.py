@@ -312,7 +312,7 @@ class PPO(Algorithm):
         self.policy.train()
         rewards = []
         acc_reward = 0.0
-        progressbar = tqdm(total=n_timesteps)
+        progressbar = tqdm(total=int(n_timesteps))
 
         # Create the training environment
         self.env = GymWrapperEnum.create_vector_env(

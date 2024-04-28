@@ -36,7 +36,7 @@ class TestDQN(unittest.TestCase):
             loss_type="huber",
             loss_kwargs={},
             max_gradient_norm=100,
-            batch_size=16,
+            steps_per_trajectory=16,
             tau=5e-3,
             gamma=0.99,
             target_freq=1,

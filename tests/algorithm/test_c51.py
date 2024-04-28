@@ -33,7 +33,7 @@ class TestC51(unittest.TestCase):
             loss_type="ce-logits",
             loss_kwargs={},
             max_gradient_norm=100,
-            batch_size=64,
+            steps_per_trajectory=64,
             tau=5e-3,
             gamma=0.99,
             target_freq=1,

@@ -23,7 +23,7 @@ class Strategy(ABC):
         Returns the actions according to the given strategy and state-value function (q_values).
 
         Args:
-            state (Union[np.ndarray, torch.Tensor]):
+            state (np.ndarray | torch.Tensor):
                 The Current state
 
             output (torch.Tensor):
