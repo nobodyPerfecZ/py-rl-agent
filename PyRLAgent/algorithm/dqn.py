@@ -366,7 +366,8 @@ class DQN(Algorithm):
         optimizer = f"optimizer={self.optimizer},"
         loss_fn = f"loss_fn=,{self.loss_fn}"
         max_gradient_norm = f"max_gradient_norm={self.max_gradient_norm},"
-        batch_size = f"batch_size={self.steps_per_trajectory},"
+        num_envs = f"num_envs={self.num_envs},"
+        steps_per_trajectory = f"steps_per_trajectory={self.steps_per_trajectory},"
         tau = f"tau={self.tau},"
         gamma = f"gamma={self.gamma},"
         target_freq = f"target_freq={self.target_freq},"
@@ -374,8 +375,8 @@ class DQN(Algorithm):
         end = ")"
         return "\n".join(
             [
-                header, env, q_net, target_q_net, replay_buffer, optimizer, loss_fn, max_gradient_norm, batch_size,
-                tau, gamma, target_freq, gradient_steps, end
+                header, env, q_net, target_q_net, replay_buffer, optimizer, loss_fn, max_gradient_norm, num_envs,
+                steps_per_trajectory, tau, gamma, target_freq, gradient_steps, end
             ]
         )
 
@@ -398,7 +399,8 @@ class DQN(Algorithm):
             "loss_kwargs": self.loss_kwargs,
             "loss_fn": self.loss_fn,
             "max_gradient_norm": self.max_gradient_norm,
-            "batch_size": self.steps_per_trajectory,
+            "num_envs": self.num_envs,
+            "steps_per_trajectory": self.steps_per_trajectory,
             "tau": self.tau,
             "gamma": self.gamma,
             "target_freq": self.target_freq,
@@ -432,7 +434,8 @@ class DQN(Algorithm):
         self.loss_fn = state["loss_fn"]
 
         self.max_gradient_norm = state["max_gradient_norm"]
-        self.steps_per_trajectory = state["batch_size"]
+        self.num_envs = state["num_envs"]
+        self.steps_per_trajectory = state["steps_per_trajectory"]
         self.tau = state["tau"]
         self.gamma = state["gamma"]
         self.target_freq = state["target_freq"]

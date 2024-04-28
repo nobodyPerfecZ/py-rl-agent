@@ -33,12 +33,11 @@ class TestDDQN(unittest.TestCase):
             loss_type="huber",
             loss_kwargs={},
             max_gradient_norm=100,
+            num_envs=8,
             steps_per_trajectory=64,
             tau=5e-3,
             gamma=0.99,
             target_freq=1,
-            train_freq=1,
-            render_freq=50,
             gradient_steps=1,
         )
 
@@ -47,11 +46,11 @@ class TestDDQN(unittest.TestCase):
         Tests the method compute_loss().
         """
         loss, loss_info = self.agent.compute_loss(
-            states=torch.rand(size=(64, 4)),
-            actions=torch.randint(low=0, high=2, size=(64,)),
-            rewards=torch.rand(size=(64,)),
-            next_states=torch.rand(size=(64, 4)),
-            dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
+            states=torch.rand(size=(8, 64, 4)),
+            actions=torch.randint(low=0, high=2, size=(8, 64,)),
+            rewards=torch.rand(size=(8, 64,)),
+            next_states=torch.rand(size=(8, 64, 4)),
+            dones=torch.randint(low=0, high=2, size=(8, 64,)).to(dtype=torch.bool),
         )
 
         self.assertIsInstance(loss, torch.Tensor)
@@ -86,12 +85,11 @@ class TestClippedDDQN(unittest.TestCase):
             loss_type="huber",
             loss_kwargs={},
             max_gradient_norm=100,
+            num_envs=8,
             steps_per_trajectory=64,
             tau=5e-3,
             gamma=0.99,
             target_freq=1,
-            train_freq=1,
-            render_freq=50,
             gradient_steps=1,
         )
 
@@ -100,11 +98,11 @@ class TestClippedDDQN(unittest.TestCase):
         Tests the method compute_loss().
         """
         loss, loss_info = self.agent.compute_loss(
-            states=torch.rand(size=(64, 4)),
-            actions=torch.randint(low=0, high=2, size=(64,)),
-            rewards=torch.rand(size=(64,)),
-            next_states=torch.rand(size=(64, 4)),
-            dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
+            states=torch.rand(size=(8, 64, 4)),
+            actions=torch.randint(low=0, high=2, size=(8, 64,)),
+            rewards=torch.rand(size=(8, 64,)),
+            next_states=torch.rand(size=(8, 64, 4)),
+            dones=torch.randint(low=0, high=2, size=(8, 64,)).to(dtype=torch.bool),
         )
 
         self.assertIsInstance(loss, torch.Tensor)
