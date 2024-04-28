@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import Union, Optional
 
 import numpy as np
 import torch
@@ -44,7 +45,7 @@ class EpsilonGreedy(Strategy, ABC):
         self.epsilon_max = epsilon_max
         self.epsilon = epsilon_max
 
-    def choose_action(self, state: np.ndarray, output: torch.Tensor) -> torch.Tensor:
+    def choose_action(self, state: Union[np.ndarray, torch.Tensor], output: torch.Tensor) -> torch.Tensor:
         if torch.rand(1) < self.epsilon:
             # Case: Choose random actions
             n_actions = output.shape[-1]
@@ -106,7 +107,16 @@ class LinearDecayEpsilonGreedy(EpsilonGreedy):
         self.steps = steps
         self.momentum = (self.epsilon_max - self.epsilon_min) / self.steps
 
-    def update(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
+    def update(
+            self,
+            state: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+            reward: Union[np.ndarray, torch.Tensor],
+            next_state: Union[np.ndarray, torch.Tensor],
+            done: Union[np.ndarray, torch.Tensor],
+            log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            value: Optional[Union[np.ndarray, torch.Tensor]] = None,
+    ):
         self.epsilon = max(self.epsilon - self.momentum, self.epsilon_min)
 
     def __str__(self) -> str:
@@ -172,7 +182,16 @@ class ExponentialDecayEpsilonGreedy(EpsilonGreedy):
 
         self.decay_factor = decay_factor
 
-    def update(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
+    def update(
+            self,
+            state: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+            reward: Union[np.ndarray, torch.Tensor],
+            next_state: Union[np.ndarray, torch.Tensor],
+            done: Union[np.ndarray, torch.Tensor],
+            log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            value: Optional[Union[np.ndarray, torch.Tensor]] = None,
+    ):
         self.epsilon = max(self.epsilon * self.decay_factor, self.epsilon_min)
 
     def __str__(self) -> str:

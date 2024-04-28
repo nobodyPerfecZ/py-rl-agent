@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import torch.nn as nn
 
-from PyRLAgent.algorithm.ddqn import ClippedDDQN
+from PyRLAgent.algorithm.ddqn import DQN
 
 if __name__ == "__main__":
-    # For CartPole
-    agent = ClippedDDQN(
-        env_type="CartPole-v1",
+    agent = DQN(
+        env_type="LunarLander-v2",
         env_wrappers="none",
         policy_type="q-dueling-net",
         policy_kwargs={

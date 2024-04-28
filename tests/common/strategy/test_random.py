@@ -1,4 +1,5 @@
 import unittest
+
 import numpy as np
 import torch
 import yaml
@@ -14,16 +15,28 @@ class TestGreedy(unittest.TestCase):
     def setUp(self):
         torch.manual_seed(0)
         self.strategy = Random()
-        self.q_values = torch.tensor([-0.9641, 0.9936, 0.3008, -0.5313, -0.7851])
-        self.state = np.array([0, 1, 2, 3])
+        self.q_values = torch.tensor([
+            [-0.9641, 0.9936, 0.3008, -0.5313, -0.7851],
+            [-0.9641, 0.9936, 0.3008, -0.5313, -0.7851],
+            [-0.9641, 0.9936, 0.3008, -0.5313, -0.7851],
+            [-0.9641, 0.9936, 0.3008, -0.5313, -0.7851],
+            [-0.9641, 0.9936, 0.3008, -0.5313, -0.7851],
+        ])
+        self.state = np.array([
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+        ])
 
     def test_choose_action(self):
         """
         Tests the method choose_action().
         """
-        action = self.strategy.choose_action(self.state, self.q_values)
+        actions = self.strategy.choose_action(self.state, self.q_values)
 
-        self.assertTrue(np.array_equal(torch.tensor(4), action))
+        self.assertTrue(np.array_equal(torch.tensor([4, 4, 3, 0, 3]), actions))
 
     def test_set_get_state(self):
         """

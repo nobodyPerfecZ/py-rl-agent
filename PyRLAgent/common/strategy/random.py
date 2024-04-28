@@ -1,3 +1,5 @@
+from typing import Union, Optional
+
 import numpy as np
 import torch
 
@@ -16,11 +18,20 @@ class Random(Strategy):
     def __init__(self):
         pass
 
-    def choose_action(self, state: np.ndarray, output: torch.Tensor) -> torch.Tensor:
-        size = () if output.dim() == 1 else (output.size()[0],)
-        return torch.randint(0, len(output), size=size)
+    def choose_action(self, state: Union[np.ndarray, torch.Tensor], output: torch.Tensor) -> torch.Tensor:
+        n_actions = output.shape[-1]
+        return torch.randint(0, n_actions, size=output.shape[:-1])
 
-    def update(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
+    def update(
+            self,
+            state: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+            reward: Union[np.ndarray, torch.Tensor],
+            next_state: Union[np.ndarray, torch.Tensor],
+            done: Union[np.ndarray, torch.Tensor],
+            log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            value: Optional[Union[np.ndarray, torch.Tensor]] = None,
+    ):
         pass
 
     def __str__(self) -> str:

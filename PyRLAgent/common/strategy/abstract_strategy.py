@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, Optional
 
 import numpy as np
 import torch
@@ -36,25 +36,40 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def update(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
+    def update(
+            self,
+            state: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+            reward: Union[np.ndarray, torch.Tensor],
+            next_state: Union[np.ndarray, torch.Tensor],
+            done: Union[np.ndarray, torch.Tensor],
+            log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            value: Optional[Union[np.ndarray, torch.Tensor]] = None,
+    ):
         """
-        Updates the strategy based on the received transition (s, a, r, s', done).
+        Updates the strategy based on the received transition (s_t, a_t, r_t, s_t+1, done).
 
         Args:
-            state (np.ndarray):
-                The current state s
+            state (np.ndarray | torch.Tensor):
+                The current state s_t
 
-            action (int):
-                The taken action a
+            action (np.ndarray | torch.Tensor):
+                The taken action a_t
 
-            reward (float):
-                The received reward r
+            reward (np.ndarray | torch.Tensor):
+                The received reward r_t
 
-            next_state (np.ndarray):
-                The next state s'
+            next_state (np.ndarray | torch.Tensor):
+                The next state s_t+1
 
-            done (bool):
+            done (np.ndarray | torch.Tensor):
                 Signalizes whether the end state is reached
+
+            log_prob(np.ndarray | torch.Tensor, optional):
+                The log probability p(a_t | s_t)
+
+            value(np.ndarray | torch.Tensor, optional):
+                The state-value function V(s_t)
         """
         pass
 
