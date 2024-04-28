@@ -16,7 +16,6 @@ class C51(DQN):
             next_states: torch.Tensor,
             dones: torch.Tensor,
     ) -> tuple[torch.Tensor, dict[str, Any]]:
-        # TODO: Change this loss function
         # Calculate the target probability distribution
         with torch.no_grad():
             # Calculate the probabilities of each bin
@@ -30,10 +29,12 @@ class C51(DQN):
             best_actions = torch.argmax(next_q_values, dim=-1)
 
             # Select from the target probabilities the ones with the best actions
-            next_probabilities = next_probabilities[range(self.steps_per_trajectory), best_actions]
+            next_probabilities = next_probabilities.gather(
+                dim=2, index=best_actions.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, next_probabilities.shape[-1])
+            ).squeeze()
 
             # Compute the projection of t_z onto the support
-            t_z = (rewards + ~dones * self.gamma).unsqueeze(1) * self.target_q_net.Z.unsqueeze(0)
+            t_z = (rewards + ~dones * self.gamma).unsqueeze(-1) * self.target_q_net.Z.unsqueeze(0)
             t_z = torch.clamp_(t_z, min=self.target_q_net.Q_min, max=self.target_q_net.Q_max)
             b = (t_z - self.target_q_net.Q_min) / self.target_q_net.delta_Z
             l = b.floor().long()
@@ -44,10 +45,11 @@ class C51(DQN):
                 torch.linspace(
                     0, (self.steps_per_trajectory - 1) * self.target_q_net.num_atoms, self.steps_per_trajectory
                 ).long()
-                .unsqueeze(1)
-                .expand(self.steps_per_trajectory, self.target_q_net.num_atoms)
+                .unsqueeze(-1)
+                .unsqueeze(-1)
+                .expand(self.steps_per_trajectory, self.num_envs, self.target_q_net.num_atoms)
             )
-            proj_dist = torch.zeros(next_probabilities.size())
+            proj_dist = torch.zeros(next_probabilities.shape)
             proj_dist.view(-1).index_add_(
                 0, (l + offset).view(-1), (next_probabilities * (u.float() - b)).view(-1)
             )
@@ -56,6 +58,12 @@ class C51(DQN):
             )
 
         dist = self.q_net.forward(states)
-        dist = dist[range(self.steps_per_trajectory), actions]
+        dist = dist.gather(
+            dim=2, index=actions.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, dist.shape[-1])
+        ).squeeze()
 
-        return self.loss_fn(dist, proj_dist, **self.loss_kwargs), {}
+        return self.loss_fn(
+            dist,
+            proj_dist,
+            **self.loss_kwargs
+        ), {}

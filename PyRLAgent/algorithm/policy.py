@@ -162,8 +162,11 @@ class QProbNetwork(DeterministicPolicy):
         # Get the logits of the probability distribution
         logits = self.model.forward(state)
 
-        # Reshape the logits to (NUM_BATCH, NUM_ACTIONS, NUM_ATOMS)
-        logits = logits.view(self.num_actions, self.num_atoms)
+        # Reshape the logits to (NUM_ENVS, NUM_TIMESTEPS, NUM_ACTIONS, NUM_ATOMS)
+        if state.ndim == 2:
+            logits = logits.reshape(state.shape[0], self.num_actions, self.num_atoms)
+        else:
+            logits = logits.reshape(self.num_actions, self.num_atoms)
 
         # Compute the probability distribution
         probabilities = F.softmax(logits, dim=-1)
@@ -183,7 +186,7 @@ class QProbNetwork(DeterministicPolicy):
         logits = super().forward(observation_or_state)
 
         # Reshape the logits to (NUM_BATCH, NUM_ACTIONS, NUM_ATOMS)
-        logits = logits.view(logits.shape[0], self.num_actions, self.num_atoms)
+        logits = logits.reshape(logits.shape[0], logits.shape[1], self.num_actions, self.num_atoms)
 
         return logits
 

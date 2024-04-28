@@ -11,7 +11,7 @@ class TestC51(unittest.TestCase):
     def setUp(self) -> None:
         self.agent = C51(
             env_type="CartPole-v1",
-            env_wrappers=None,
+            env_wrappers="none",
             policy_type="q-prob-net",
             policy_kwargs={
                 "Q_min": -1,
@@ -33,12 +33,11 @@ class TestC51(unittest.TestCase):
             loss_type="ce-logits",
             loss_kwargs={},
             max_gradient_norm=100,
+            num_envs=8,
             steps_per_trajectory=64,
             tau=5e-3,
             gamma=0.99,
             target_freq=1,
-            train_freq=1,
-            render_freq=50,
             gradient_steps=1,
         )
 
@@ -47,11 +46,11 @@ class TestC51(unittest.TestCase):
         Tests the method compute_loss().
         """
         loss, loss_info = self.agent.compute_loss(
-            states=torch.rand(size=(64, 4)),
-            actions=torch.randint(low=0, high=2, size=(64,)),
-            rewards=torch.rand(size=(64,)),
-            next_states=torch.rand(size=(64, 4)),
-            dones=torch.randint(low=0, high=2, size=(64,)).to(dtype=torch.bool),
+            states=torch.rand(size=(64, 8, 4)),
+            actions=torch.randint(low=0, high=2, size=(64, 8,)),
+            rewards=torch.rand(size=(64, 8,)),
+            next_states=torch.rand(size=(64, 8, 4)),
+            dones=torch.randint(low=0, high=2, size=(64, 8,)).to(dtype=torch.bool),
         )
 
         self.assertIsInstance(loss, torch.Tensor)

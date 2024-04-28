@@ -5,7 +5,7 @@ from PyRLAgent.algorithm.c51 import C51
 
 if __name__ == "__main__":
     agent = C51(
-        env_type="CartPole-v1",
+        env_type="LunarLander-v2",
         env_wrappers="none",
         policy_type="q-prob-net",
         policy_kwargs={
