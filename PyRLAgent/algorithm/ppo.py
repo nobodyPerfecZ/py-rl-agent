@@ -234,24 +234,24 @@ class PPO(Algorithm):
 
         Args:
             rewards (torch.Tensor):
-                Minibatch of rewards with shape (NUM_ENVS, NUM_STEPS)
+                Minibatch of rewards with shape (NUM_STEPS, NUM_ENVS)
 
             dones (torch.Tensor):
-                Minibatch of dones with shape (NUM_ENVS, NUM_STEPS)
+                Minibatch of dones with shape (NUM_STEPS, NUM_ENVS)
 
             values (torch.Tensor):
-                Minibatch of values V(s) with shape (NUM_ENVS, NUM_STEPS)
+                Minibatch of values V(s) with shape (NUM_STEPS, NUM_ENVS)
 
             next_values (torch.Tensor):
-                Minibatch of next values V(s_t+1) with shape (NUM_ENVS, NUM_STEPS)
+                Minibatch of next values V(s_t+1) with shape (NUM_STEPS, NUM_ENVS)
 
         Returns:
             tuple[torch.Tensor, torch.Tensor]:
                 advantages (torch.Tensor):
-                    Minibatch of computed advantages with shape (NUM_ENVS, NUM_STEPS)
+                    Minibatch of computed advantages with shape (NUM_STEPS, NUM_ENVS)
 
                 targets (torch.Tensor):
-                    Minibatch of computed targets with shape (NUM_ENVS, NUM_STEPS)
+                    Minibatch of computed targets with shape (NUM_STEPS, NUM_ENVS)
         """
         # Compute temporal difference errors (deltas)
         # delta_t = r_t + gamma * (1-dones) * V(s_t+1) - V(s_t)
@@ -260,9 +260,9 @@ class PPO(Algorithm):
         # Compute advantages using Generalized Advantage Estimation (GAE)
         # A_t = delta_t + gamma * gae_lambda * (1-dones) * A_t+1
         advantages = torch.zeros(rewards.shape)
-        advantages[:, -1] = deltas[:, -1]
+        advantages[-1, :] = deltas[-1, :]
         for t in reversed(range(self.steps_per_trajectory - 1)):
-            advantages[:, t] = deltas[:, t] + self.gamma * self.gae_lambda * ~dones[:, t] * advantages[:, t + 1]
+            advantages[t, :] = deltas[t, :] + self.gamma * self.gae_lambda * ~dones[t, :] * advantages[t + 1, :]
 
         # Normalization of the advantages
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)

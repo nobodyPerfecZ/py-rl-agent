@@ -9,45 +9,75 @@ class Transition(NamedTuple):
     """
     A class for representing a Transition in a reinforcement learning environment.
 
-    A Transition (s, a, r, s', done, log_prob) is used to capture the key elements of an agent interaction with an
-    environment:
-        - s := current state
-        - a := taken action
-        - r := reward for doing action a from state s
-        - s' := next state after taking action a from state s
-        - done := Is state s' a terminal state or not
-        - log_prob := log probability of p(a | s)
-        - value := state-value V(s)
+    A Transition (s_t, a_t, r_t, s_t+1, done, log_prob, value) is used to capture the key elements of an agent
+    interaction with an environment:
+        - s_t := current state
+        - a_t := taken action
+        - r_t := reward for doing action a_t from state s_t
+        - s_t+1 := next state after taking action a_t from state s_t
+        - done := Is state s_t+1 a terminal state or not
+        - (Optional:) log_prob := log probability of p(a_t | s_t)
+        - (Optional:) value := state-value function V(s_t)
 
     Attributes:
-        state (Union[np.ndarray, torch.Tensor]):
-            The current state s
+        state (np.ndarray | torch.Tensor):
+            The current state s_t in time step t
 
-        action (Union[np.ndarray, torch.Tensor]):
-            The taken action a
+        action (np.ndarray | torch.Tensor):
+            The taken action a_t in time step t
 
-        reward (Union[np.ndarray, torch.Tensor]):
-            The reward r for doing action a from state s
+        reward (np.ndarray | torch.Tensor):
+            The reward r_t for doing action a_t from state s_t
 
-        next_state (Union[np.ndarray, torch.Tensor]):
-            The next state s' after taking action a from state s
+        next_state (np.ndarray | torch.Tensor):
+            The next state s_t+1 after taking action a_t from state s_t
 
-        done (Union[bool, torch.Tensor]):
-            Signalizes whether the end state is reached
+        done (np.ndarray | torch.Tensor):
+            Signalizes whether the next state s_t+1 is a terminal state
 
-        log_prob(Union[float, torch.Tensor], optional):
-            The log probability p(a | s)
+        log_prob(np.ndarray | torch.Tensor, optional):
+            The log probability p(a_t | s_t)
 
-        value(Union[float, torch.Tensor], optional):
-            The state-value V(s)
+        value(np.ndarray | torch.Tensor, optional):
+            The state-value function V(s_t)
     """
     state: Union[np.ndarray, torch.Tensor]
-    action: Union[int, torch.Tensor]
-    reward: Union[float, torch.Tensor]
+    action: Union[np.ndarray, torch.Tensor]
+    reward: Union[np.ndarray, torch.Tensor]
     next_state: Union[np.ndarray, torch.Tensor]
-    done: Union[bool, torch.Tensor]
-    log_prob: Optional[Union[float, torch.Tensor]] = None
-    value: Optional[Union[float, torch.Tensor]] = None
+    done: Union[np.ndarray, torch.Tensor]
+    log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None
+    value: Optional[Union[np.ndarray, torch.Tensor]] = None
+
+    @staticmethod
+    def create(transitions: list["Transition"]) -> "Transition":
+        """
+        Creates a single transition in batch format from a list of single transitions.
+
+        Args:
+            transitions (list[Transition]):
+                The list of single transitions
+
+        Returns:
+            Transition:
+                A single transition in batch format
+        """
+        # Convert list[Transition] to a single Transition with matrices
+        states = torch.tensor(np.stack([t.state for t in transitions], axis=0)).to(dtype=torch.float32)
+        actions = torch.tensor(np.stack([t.action for t in transitions], axis=0)).to(dtype=torch.int64)
+        rewards = torch.tensor(np.stack([t.reward for t in transitions], axis=0)).to(dtype=torch.float32)
+        next_states = torch.tensor(np.stack([t.next_state for t in transitions], axis=0)).to(dtype=torch.float32)
+        dones = torch.tensor(np.stack([t.done for t in transitions], axis=0)).to(dtype=torch.bool)
+
+        log_probs = None
+        if transitions[0].log_prob is not None:
+            log_probs = torch.tensor(np.stack([t.log_prob for t in transitions], axis=0)).to(dtype=torch.float32)
+
+        values = None
+        if transitions[0].value is not None:
+            values = torch.tensor(np.stack([t.value for t in transitions], axis=0)).to(dtype=torch.float32)
+
+        return Transition(states, actions, rewards, next_states, dones, log_probs, values)
 
 
 class Buffer(ABC):
@@ -100,7 +130,7 @@ class Buffer(ABC):
     @abstractmethod
     def _push(self, transition: Transition):
         """
-        Pushes a Transition (s, a, r, s', done, log_prob, value) to the replay buffer.
+        Pushes a Transition (s_t, a_t, r_t, s_t+1, done, log_prob, value) to the replay buffer.
 
         Args:
             transition (Transition):
@@ -110,38 +140,38 @@ class Buffer(ABC):
 
     def push(
             self,
-            state: np.ndarray,
-            action: int,
-            reward: float,
-            next_state: np.ndarray,
-            done: bool,
-            log_prob: Optional[Union[float, torch.Tensor]] = None,
-            value: Optional[Union[float, torch.Tensor]] = None,
+            state: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+            reward: Union[np.ndarray, torch.Tensor],
+            next_state: Union[np.ndarray, torch.Tensor],
+            done: Union[np.ndarray, torch.Tensor],
+            log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            value: Optional[Union[np.ndarray, torch.Tensor]] = None,
     ):
         """
-        Pushes a Transition (s, a, r, s', done, log_prob, value) to the replay buffer.
+        Pushes a Transition (s_t, a_t, r_t, s_t+1, done, log_prob, value) to the replay buffer.
 
         Args:
-            state (np.ndarray):
-                The current state s
+            state (np.ndarray | torch.Tensor):
+                The current state s_t
 
-            action (int):
-                The taken action a
+            action (np.ndarray | torch.Tensor):
+                The taken action a_t
 
-            reward (float):
-                The reward r for taken action a from state s
+            reward (np.ndarray | torch.Tensor):
+                The reward r_t for taken action a_t from state s_t
 
-            next_state (np.ndarray):
-                The next state s' for taken action a from state s
+            next_state (np.ndarray | torch.Tensor):
+                The next state s_t+1 for taken action a_t from state s_t
 
-            done (bool):
-                Signalizes whether the end state is reached
+            done (np.ndarray | torch.Tensor):
+                Signalizes whether the next state s_t+1 is reached
             
-            log_prob (Union[float, torch.Tensor], optional):
-                The log probability of p(a | s)
+            log_prob (np.ndarray | torch.Tensor, optional):
+                The log probability of p(a_t | s_t)
 
-            value (Union[float, torch.Tensor], optional):
-                The state-value V(s)
+            value (np.ndarray | torch.Tensor, optional):
+                The state-value V(s_t)
         """
         return self._push(Transition(state, action, reward, next_state, done, log_prob, value))
 
@@ -173,23 +203,7 @@ class Buffer(ABC):
                 The transition as batch of PyTorch Tensors
         """
         samples = self._get(batch_size)
-
-        # Convert list[Transition] to a single Transition with matrices
-        states = torch.tensor(np.stack([t.state for t in samples], axis=1)).to(dtype=torch.float32)
-        actions = torch.tensor(np.stack([t.action for t in samples], axis=1)).to(dtype=torch.int64)
-        rewards = torch.tensor(np.stack([t.reward for t in samples], axis=1)).to(dtype=torch.float32)
-        next_states = torch.tensor(np.stack([t.next_state for t in samples], axis=1)).to(dtype=torch.float32)
-        dones = torch.tensor(np.stack([t.done for t in samples], axis=1)).to(dtype=torch.bool)
-
-        log_probs = None
-        if samples[0].log_prob is not None:
-            log_probs = torch.tensor(np.stack([t.log_prob for t in samples], axis=1)).to(dtype=torch.float32)
-
-        values = None
-        if samples[0].value is not None:
-            values = torch.tensor(np.stack([t.value for t in samples], axis=1)).to(dtype=torch.float32)
-
-        return Transition(states, actions, rewards, next_states, dones, log_probs, values)
+        return Transition.create(samples)
 
     @abstractmethod
     def _sample(self, batch_size: int) -> list[Transition]:
@@ -219,23 +233,7 @@ class Buffer(ABC):
                 The sampled transition as batches of PyTorch Tensors
         """
         samples = self._sample(batch_size)
-
-        # Convert list[Transition] to a single Transition with matrices
-        states = torch.tensor(np.array([t.state for t in samples])).to(dtype=torch.float32)
-        actions = torch.tensor(np.array([t.action for t in samples])).to(dtype=torch.int64)
-        rewards = torch.tensor(np.array([t.reward for t in samples])).to(dtype=torch.float32)
-        next_states = torch.tensor(np.array([t.next_state for t in samples])).to(dtype=torch.float32)
-        dones = torch.tensor(np.array([t.done for t in samples])).to(dtype=torch.bool)
-
-        log_probs = None
-        if samples[0].log_prob is not None:
-            log_probs = torch.tensor([t.log_prob for t in samples]).to(dtype=torch.float32)
-
-        values = None
-        if samples[0].value is not None:
-            values = torch.tensor([t.value for t in samples]).to(dtype=torch.float32)
-
-        return Transition(states, actions, rewards, next_states, dones, log_probs, values)
+        return Transition.create(samples)
 
     @abstractmethod
     def __len__(self) -> int:
