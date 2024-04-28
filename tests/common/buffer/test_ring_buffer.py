@@ -69,7 +69,7 @@ class TestRingBuffer(unittest.TestCase):
         """
         size = self.max_size - 2
         for i in range(self.max_size):
-            self.replay_buffer.push(np.array([i]), i, i, np.array([i + 1]), False)
+            self.replay_buffer.push(np.array([i]), np.array([i]), np.array([i]), np.array([i + 1]), np.array([False]))
 
         samples = self.replay_buffer.get(batch_size=size)
 
@@ -79,11 +79,11 @@ class TestRingBuffer(unittest.TestCase):
         self.assertIsInstance(samples.next_state, torch.Tensor)
         self.assertIsInstance(samples.done, torch.Tensor)
 
-        self.assertEqual(size, len(samples.state))
-        self.assertEqual(size, len(samples.action))
-        self.assertEqual(size, len(samples.reward))
-        self.assertEqual(size, len(samples.next_state))
-        self.assertEqual(size, len(samples.done))
+        self.assertEqual((1, size), samples.state.shape)
+        self.assertEqual((1, size), samples.action.shape)
+        self.assertEqual((1, size), samples.reward.shape)
+        self.assertEqual((1, size), samples.next_state.shape)
+        self.assertEqual((1, size), samples.done.shape)
 
     def test_sample(self):
         """

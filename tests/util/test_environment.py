@@ -34,8 +34,7 @@ class TestEnvironment(unittest.TestCase):
         """
         envs = get_vector_env(self.env_name, 1, render_mode=None)
 
-        self.assertIsInstance(envs, gym.vector.AsyncVectorEnv)
-
+        self.assertIsInstance(envs, gym.experimental.vector.VectorEnv)
         envs.close()
 
     def test_transform_env(self):

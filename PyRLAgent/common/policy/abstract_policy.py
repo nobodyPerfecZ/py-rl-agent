@@ -228,7 +228,7 @@ class ActorCriticPolicy(Policy, ABC):
 
     def predict(
             self,
-            observation: np.ndarray,
+            observation: Union[np.ndarray, torch.Tensor],
             return_all: bool = False,
     ) -> Union[torch.Tensor, tuple[Distribution, torch.Tensor, torch.Tensor, torch.Tensor]]:
         """
@@ -237,7 +237,7 @@ class ActorCriticPolicy(Policy, ABC):
         If return_all is False then it will only return the action.
 
         Args:
-            observation (np.ndarray):
+            observation (np.ndarray | torch.Tensor):
                 Observation extracted by interacting with the environment
 
             return_all (bool):
@@ -258,7 +258,10 @@ class ActorCriticPolicy(Policy, ABC):
                     The state-value V(s)
         """
         with torch.no_grad():
-            pi, action, log_prob, value = self._predict(obs_to_tensor(observation))
+            if isinstance(observation, np.ndarray):
+                pi, action, log_prob, value = self._predict(obs_to_tensor(observation))
+            else:
+                pi, action, log_prob, value = self._predict(observation)
 
         if return_all:
             return pi, action, log_prob, value

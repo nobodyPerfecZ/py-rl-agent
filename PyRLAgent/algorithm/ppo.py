@@ -13,7 +13,6 @@ from PyRLAgent.enum.optimizer import OptimizerEnum
 from PyRLAgent.enum.policy import PolicyEnum
 from PyRLAgent.enum.wrapper import GymWrapperEnum
 from PyRLAgent.util.environment import get_env
-from PyRLAgent.util.interval_counter import IntervalCounter
 
 
 class PPO(Algorithm):
@@ -70,15 +69,17 @@ class PPO(Algorithm):
         gae_lambda (float):
             The discount factor of the advantages.
 
+        target_kl (float, optional):
+            The target value of the KL divergence.
+            If the KL divergence of the policy exceeds 1.5 times the target value, the training process will be early
+            stopped.
+            If no target value is given, then no early stopping will be performed.
+
         vf_coef (float):
             The weight of the critic loss.
 
         ent_coef (float):
             The weight of the entropy bonus.
-
-        render_freq (int):
-            The frequency of rendering the environment.
-            After N episodes the environment gets rendered.
 
         gradient_steps (int):
             The number of gradient updates per training step.
@@ -101,10 +102,9 @@ class PPO(Algorithm):
             clip_ratio: float,
             gamma: float,
             gae_lambda: float,
-            target_kl: float,
+            target_kl: Optional[float],
             vf_coef: float,
             ent_coef: float,
-            render_freq: int,
             gradient_steps: int
     ):
         self.env_type = env_type
@@ -144,18 +144,7 @@ class PPO(Algorithm):
         self.target_kl = target_kl
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef
-        self.render_freq = render_freq
         self.gradient_steps = gradient_steps
-
-        # Counter
-        self.render_count = IntervalCounter(initial_value=0, modulo=self.render_freq)
-
-    def _reset(self):
-        """
-        Resets the all used counters.
-        """
-        # Reset the counters
-        self.render_count.reset()
 
     def _apply_gradient_norm(self):
         """
@@ -165,15 +154,37 @@ class PPO(Algorithm):
         if self.max_gradient_norm is not None:
             nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_gradient_norm)
 
+    def _early_stopping(self, kl: float) -> bool:
+        """
+        Applies early stopping on the policy updates based on the given target_kl.
+        If target_kl is not given, then no early stopping will be performed.
+
+        Args:
+            kl (float):
+                The current kl divergence value
+
+        Returns:
+            bool:
+                True if early stopping should be performed, otherwise False
+        """
+        if self.target_kl is None:
+            # Case: No early stopping should be performed
+            return False
+        return kl > 1.5 * self.target_kl
+
     def train(self):
         # Get the trajectories
         samples = self.replay_buffer.get(self.steps_per_trajectory)
+
+        # Compute the next values
+        _, _, _, next_values = self.policy.predict(samples.next_state, return_all=True)
 
         # Calculate the advantages, targets according to Generalized Advantage Estimation (GAE)
         advantages, targets = self.compute_gae(
             rewards=samples.reward,
             dones=samples.done,
-            values=samples.value
+            values=samples.value,
+            next_values=next_values,
         )
 
         for i in range(self.gradient_steps):
@@ -191,8 +202,8 @@ class PPO(Algorithm):
             )
 
             kl = loss_info["kl"]
-            if kl > 1.5 * self.target_kl:
-                # Case: Early stopping technique
+            if self._early_stopping(kl):
+                # Case: Perform early stopping
                 break
 
             # Perform the backward propagation
@@ -215,58 +226,48 @@ class PPO(Algorithm):
             self,
             rewards: torch.Tensor,
             dones: torch.Tensor,
-            values: torch.Tensor
+            values: torch.Tensor,
+            next_values: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Computes the advantages after the Generalized Advantage Estimation (GAE).
 
         Args:
             rewards (torch.Tensor):
-                Tensor of shape [num_envs, num_steps]
-                Minibatch of rewards r
+                Minibatch of rewards with shape (NUM_ENVS, NUM_STEPS)
 
             dones (torch.Tensor):
-                Tensor of shape [num_envs, num_steps]
-                Minibatch of dones
+                Minibatch of dones with shape (NUM_ENVS, NUM_STEPS)
 
             values (torch.Tensor):
-                Tensor of shape [num_envs, num_steps]
-                Minibatch of values V(s)
+                Minibatch of values V(s) with shape (NUM_ENVS, NUM_STEPS)
+
+            next_values (torch.Tensor):
+                Minibatch of next values V(s_t+1) with shape (NUM_ENVS, NUM_STEPS)
 
         Returns:
             tuple[torch.Tensor, torch.Tensor]:
-
                 advantages (torch.Tensor):
-                    Tensor of shape [num_envs, num_steps]
-                    Minibatch of computed advantages
+                    Minibatch of computed advantages with shape (NUM_ENVS, NUM_STEPS)
 
                 targets (torch.Tensor):
-                    Tensor of shape [num_envs, num_steps]
-                    Minibatch of computed targets
+                    Minibatch of computed targets with shape (NUM_ENVS, NUM_STEPS)
         """
         # Compute temporal difference errors (deltas)
         # delta_t = r_t + gamma * (1-dones) * V(s_t+1) - V(s_t)
-
-        delta = rewards[:, :-1] + self.gamma * ~dones[:, :-1] * values[:, 1:] - values[:, :-1]
+        deltas = rewards + self.gamma * ~dones * values - next_values
 
         # Compute advantages using Generalized Advantage Estimation (GAE)
-        advantage = torch.zeros(rewards.shape)
-
         # A_t = delta_t + gamma * gae_lambda * (1-dones) * A_t+1
+        advantages = torch.zeros(rewards.shape)
+        advantages[:, -1] = deltas[:, -1]
         for t in reversed(range(self.steps_per_trajectory - 1)):
-            advantage[:, t] = delta[:, t] + self.gamma * self.gae_lambda * ~dones[:, t] * advantage[:, t + 1]
+            advantages[:, t] = deltas[:, t] + self.gamma * self.gae_lambda * ~dones[:, t] * advantages[:, t + 1]
 
         # Normalization of the advantages
-        advantage = (advantage - advantage.mean(dim=0)) / (advantage.std(dim=0) + 1e-8)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-        # Compute the targets
-        targets = advantage + values
-
-        # Reshape advantage and targets back to (batch_size * num_steps)
-        # advantage = advantage.reshape(-1)
-        # targets = targets.reshape(-1)
-
-        return advantage, targets
+        return advantages, advantages + values
 
     def compute_loss(
             self,
@@ -307,23 +308,23 @@ class PPO(Algorithm):
         return total_loss, loss_info
 
     def fit(self, n_timesteps: Union[float, int]) -> list[float]:
-        self.policy.train()
-
         # Reset parameters
-        self._reset()
+        self.policy.train()
         rewards = []
         acc_reward = 0.0
+        progressbar = tqdm(total=n_timesteps)
 
         # Create the training environment
-        self.env = GymWrapperEnum.create_vector_env(name=self.env_type, num_envs=self.num_envs, wrappers=self.env_wrappers, render_mode=None)
-
-        # Create the progress bar
-        progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
-        old_timestep = 0
+        self.env = GymWrapperEnum.create_vector_env(
+            name=self.env_type,
+            num_envs=self.num_envs,
+            wrappers=self.env_wrappers,
+            render_mode=None
+        )
 
         # Reset the environment
         state, info = self.env.reset()
-        for timestep in range(0, int(n_timesteps), self.num_envs):
+        for _ in range(0, int(n_timesteps), self.num_envs):
             # Get the next action
             _, action, log_prob, value = self.policy.predict(state, return_all=True)
             action = action.numpy()
@@ -333,7 +334,7 @@ class PPO(Algorithm):
             # Do a step on the environment
             next_state, reward, terminated, truncated, info = self.env.step(action)
             done = np.logical_or(terminated,  truncated)
-            acc_reward += np.mean(reward)  # TODO
+            acc_reward += np.mean(reward)
 
             # Update the replay buffer by pushing the given transition
             self.replay_buffer.push(state, action, reward, next_state, done, log_prob, value)
@@ -345,46 +346,26 @@ class PPO(Algorithm):
                 # Case: Update the Actor-Critic Network
                 self.train()
 
-            if np.any(done):
-                # Case: End of episode is reached
-                if self.render_count.is_interval_reached():
-                    progressbar.set_postfix_str(f"{acc_reward:.2f}return")
-                    progressbar.update(timestep - old_timestep)
-                    old_timestep = timestep
-
-                # Update render count
-                self.render_count.increment()
-
-                # Append accumulated rewards to the list of rewards for each episode
-                rewards += [acc_reward]
-
-                acc_reward = 0
-                continue
+            # Update the progressbar
+            progressbar.update(self.num_envs)
 
         # Close all necessary objects
-        progressbar.close()
         self.env.close()
+        progressbar.close()
         return rewards
 
     def eval(self, n_timesteps: Union[float, int]) -> list[float]:
-        self.policy.eval()
-
         # Reset parameters
-        self._reset()
+        self.policy.eval()
         rewards = []
         acc_reward = 0.0
 
-        # Create the progress bar
-        progressbar = tqdm(total=int(n_timesteps), desc="Training", unit="timesteps")
-        old_timestep = 0
-
         # Create the environment
         self.env = GymWrapperEnum.create_env(name=self.env_type, wrappers=self.env_wrappers, render_mode="human")
-        # self.env = get_env(self.env_type, render_mode="human")
 
         # Reset the environment
         state, info = self.env.reset()
-        for timestep in range(int(n_timesteps)):
+        for _ in tqdm(range(int(n_timesteps))):
             # Get the next action
             action = self.policy.predict(state, return_all=False).item()
 
@@ -397,15 +378,6 @@ class PPO(Algorithm):
             state = next_state
 
             if done:
-                # Case: End of episode is reached
-                if self.render_count.is_interval_reached():
-                    progressbar.set_postfix_str(f"{acc_reward:.2f}return")
-                    progressbar.update(timestep - old_timestep)
-                    old_timestep = timestep
-
-                # Update render count
-                self.render_count.increment()
-
                 # Append accumulated rewards to the list of rewards for each episode
                 rewards += [acc_reward]
 
@@ -415,7 +387,6 @@ class PPO(Algorithm):
                 continue
 
         # Close all necessary objects
-        progressbar.close()
         self.env.close()
         return rewards
 
@@ -431,13 +402,12 @@ class PPO(Algorithm):
         gae_lambda = f"gae_lambda={self.gae_lambda}"
         vf_coef = f"vf_coef={self.vf_coef}"
         ent_coef = f"ent_coef={self.ent_coef}"
-        render_freq = f"render_freq={self.render_freq},"
         gradient_steps = f"gradient_steps={self.gradient_steps},"
         end = ")"
         return "\n".join(
             [
                 header, env, policy, replay_buffer, optimizer, steps_per_trajectory, clip_ratio,
-                gamma, gae_lambda, vf_coef, ent_coef, render_freq, gradient_steps, end
+                gamma, gae_lambda, vf_coef, ent_coef, gradient_steps, end
             ]
         )
 
@@ -465,9 +435,7 @@ class PPO(Algorithm):
             "target_kl": self.target_kl,
             "vf_coef": self.vf_coef,
             "ent_coef": self.ent_coef,
-            "render_freq": self.render_freq,
             "gradient_steps": self.gradient_steps,
-            "render_count": self.render_count,
         }
 
     def __setstate__(self, state: dict):
@@ -499,6 +467,4 @@ class PPO(Algorithm):
         self.target_kl = state["target_kl"]
         self.vf_coef = state["vf_coef"]
         self.ent_coef = state["ent_coef"]
-        self.render_freq = state["render_freq"]
         self.gradient_steps = state["gradient_steps"]
-        self.render_count = state["render_count"]

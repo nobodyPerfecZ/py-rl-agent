@@ -41,7 +41,6 @@ class TestPPO(unittest.TestCase):
             target_kl=0.01,
             vf_coef=0.5,
             ent_coef=0.0,
-            render_freq=50,
             gradient_steps=16,
         )
 
@@ -50,28 +49,29 @@ class TestPPO(unittest.TestCase):
         Tests the method compute_loss().
         """
         advantages, targets = self.agent.compute_gae(
-            rewards=torch.rand(size=(32 * 16,)),
-            dones=torch.randint(low=0, high=2, size=(32 * 16,)),
-            values=torch.rand(size=(32 * 16,)),
+            rewards=torch.rand(size=(32, 16)),
+            dones=torch.randint(low=0, high=2, size=(32, 16)),
+            values=torch.rand(size=(32, 16)),
+            next_values=torch.rand(size=(32, 16)),
         )
 
         self.assertIsInstance(advantages, torch.Tensor)
-        self.assertEqual((32 * 16,), advantages.shape)
+        self.assertEqual((32, 16), advantages.shape)
 
         self.assertIsInstance(targets, torch.Tensor)
-        self.assertEqual((32 * 16,), targets.shape)
+        self.assertEqual((32, 16), targets.shape)
 
     def test_compute_loss(self):
         """
         Tests the method compute_loss().
         """
         loss, loss_info = self.agent.compute_loss(
-            states=torch.rand(size=(32 * 16, 4)),
-            actions=torch.randint(low=0, high=2, size=(32 * 16,)),
-            log_probs=torch.rand(size=(32 * 16,)),
-            advantages=torch.rand(size=(32 * 16,)),
-            values=torch.rand(size=(32 * 16,)),
-            targets=torch.rand(size=(32 * 16,)),
+            states=torch.rand(size=(32, 16, 4)),
+            actions=torch.randint(low=0, high=2, size=(32, 16)),
+            log_probs=torch.rand(size=(32, 16)),
+            advantages=torch.rand(size=(32, 16)),
+            values=torch.rand(size=(32, 16)),
+            targets=torch.rand(size=(32, 16)),
         )
 
         self.assertIsInstance(loss, torch.Tensor)

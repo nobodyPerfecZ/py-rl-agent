@@ -22,7 +22,7 @@ def get_env(name: str, **env_kwargs) -> gym.Env:
     return env
 
 
-def get_vector_env(name: str, num_envs: int, **env_kwargs) -> gym.vector.VectorEnv:
+def get_vector_env(name: str, num_envs: int, **env_kwargs) -> gym.experimental.vector.VectorEnv:
     """
     Creates NUM_ENVS Gymnasium environments given the name and kwargs.
 
@@ -37,7 +37,7 @@ def get_vector_env(name: str, num_envs: int, **env_kwargs) -> gym.vector.VectorE
             Additional parameters to the environments
 
     Returns:
-        gym.vector.VectorEnv:
+        gym.experimental.vector.VectorEnv:
             The Gymnasium environment with the specified kwargs
     """
     envs = gym.make_vec(name, num_envs=num_envs, **env_kwargs)

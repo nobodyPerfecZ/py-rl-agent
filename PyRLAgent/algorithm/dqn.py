@@ -130,7 +130,6 @@ class DQN(Algorithm):
             gamma: float,
             target_freq: int,
             train_freq: int,
-            render_freq: int,
             gradient_steps: int,
     ):
         self.env_type = env_type
