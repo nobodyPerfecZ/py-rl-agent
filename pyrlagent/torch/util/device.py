@@ -3,7 +3,7 @@ import torch
 
 def get_device(device: str) -> str:
     """
-    Get the device on which to run the neural network.
+    Returns the device on which to run the neural network.
 
     Args:
         device (str):
@@ -13,6 +13,9 @@ def get_device(device: str) -> str:
         str:
             The device on which to run the neural network
     """
+    if device not in ["cpu", "cuda", "auto"]:
+        raise ValueError(f"device ({device}) must be 'cpu', 'cuda', or 'auto'.")
+
     if device == "auto":
         return "cuda" if torch.cuda.is_available() else "cpu"
     elif device == "cuda" and not torch.cuda.is_available():

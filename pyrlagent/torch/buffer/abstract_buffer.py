@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Optional, Union
+
+import numpy as np
+import torch
 
 from pyrlagent.torch.experience.trajectory import Trajectory
 
@@ -18,41 +21,41 @@ class AbstractBuffer(ABC):
     @abstractmethod
     def push(
         self,
-        state: Any,
-        action: Any,
-        reward: Any,
-        next_state: Any,
-        done: Any,
-        log_prob: Optional[Any] = None,
-        value: Optional[Any] = None,
-        next_value: Optional[Any] = None,
+        state: Union[np.ndarray, torch.Tensor],
+        action: Union[np.ndarray, torch.Tensor],
+        reward: Union[np.ndarray, torch.Tensor],
+        next_state: Union[np.ndarray, torch.Tensor],
+        done: Union[np.ndarray, torch.Tensor],
+        log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        value: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        next_value: Optional[Union[np.ndarray, torch.Tensor]] = None,
     ):
         """
         Adds a transition (s_t, a_t, r_t, s_t+1, done, log_prob, value, next_value) to the replay buffer.
 
         Args:
-            state (Any):
+            state (np.ndarray | torch.Tensor):
                 The current state s_t
 
-            action (Any):
+            action (np.ndarray | torch.Tensor):
                 The action a_t
 
-            reward (Any):
+            reward (np.ndarray | torch.Tensor):
                 The reward r_t
 
-            next_state (Any):
+            next_state (np.ndarray | torch.Tensor):
                 The next state s_t+1
 
-            done (Any):
+            done (np.ndarray | torch.Tensor):
                 Whether the end state is reached
 
-            log_prob (Any, optional):
+            log_prob (np.ndarray | torch.Tensor, optional):
                 The log probability of p(a_t | s_t)
 
-            value (np.ndarray, optional):
+            value (np.ndarray | torch.Tensor, optional):
                 The state value V(s_t)
 
-            next_value (np.ndarray, optional):
+            next_value (np.ndarray | torch.Tensor, optional):
                 The state value V(s_t+1)
         """
         pass

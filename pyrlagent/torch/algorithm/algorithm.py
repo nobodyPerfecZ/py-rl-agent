@@ -5,6 +5,11 @@ class AbstractRLAlgorithm(ABC):
     """Abstract class for Reinforcement Learning (RL) algorithms."""
 
     @abstractmethod
+    def update(self):
+        """Updates the algorithm."""
+        pass
+
+    @abstractmethod
     def fit(self, num_timesteps: int) -> list[float]:
         """
         Fits the algorithm for a certain number of timesteps.

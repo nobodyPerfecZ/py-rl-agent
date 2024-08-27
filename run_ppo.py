@@ -39,7 +39,7 @@ if __name__ == "__main__":
         vf_coef=2.0,
         ent_coef=0.0,
         update_steps=4,
-        device="cpu",
+        device="auto",
     )
     # Train the agent
     agent.fit(num_timesteps=1e5)

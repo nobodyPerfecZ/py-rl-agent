@@ -30,7 +30,6 @@ def create_env_train(env_config: EnvConfig, num_envs: int, device: str) -> gym.E
             The Gymnasium environment
     """
     # Get the vectorized environment
-    # TODO: Add the option to pass wrappers for vectorized environments
     env = get_vector_env(
         env_id=env_config.env_type,
         num_envs=num_envs,

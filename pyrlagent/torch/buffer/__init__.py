@@ -4,14 +4,12 @@ from pyrlagent.torch.buffer import rollout_buffer
 
 AbstractBuffer = abstract_buffer.AbstractBuffer
 
-ReplayBufferNumpy = replay_buffer.ReplayBufferNumpy
-ReplayBufferTorch = replay_buffer.ReplayBufferTorch
+ReplayBuffer = replay_buffer.ReplayBuffer
 
 RolloutBuffer = rollout_buffer.RolloutBuffer
 
 __all__ = [
     "AbstractBuffer",
-    "ReplayBufferNumpy",
-    "ReplayBufferTorch",
+    "ReplayBuffer",
     "RolloutBuffer",
 ]

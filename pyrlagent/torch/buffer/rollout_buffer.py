@@ -1,28 +1,37 @@
-from typing import Any, Optional
+from typing import Optional
 
-import numpy as np
 import torch
 
 from pyrlagent.torch.buffer.abstract_buffer import AbstractBuffer
 from pyrlagent.torch.experience.trajectory import Trajectory
+from pyrlagent.torch.util.device import get_device
 
 
 class RolloutBuffer(AbstractBuffer):
     """A time-related sequence of transitions."""
 
     def __init__(
-        self, obs_dim: int, act_dim: int, env_dim: int, max_size: int, device: str
+        self,
+        obs_dim: int,
+        act_dim: int,
+        env_dim: int,
+        max_size: int,
+        device: str,
     ):
-        assert obs_dim > 0, "obs_dim must be greater than 0."
-        assert act_dim > 0, "act_dim must be greater than 0."
-        assert env_dim > 0, "env_dim must be greater than 0."
-        assert max_size > 0, "max_size must be greater than 0."
+        if obs_dim <= 0:
+            raise ValueError(f"obs_dim ({obs_dim}) must be greather than 0.")
+        if act_dim <= 0:
+            raise ValueError(f"act_dim ({act_dim}) must be greather than 0.")
+        if env_dim <= 0:
+            raise ValueError(f"env_dim ({env_dim}) must be greather than 0.")
+        if max_size <= 0:
+            raise ValueError(f"max_size ({max_size}) must be greather than 0.")
 
         self.obs_dim = obs_dim
         self.act_dim = act_dim
         self.env_dim = env_dim
         self.max_size = max_size
-        self.device = device
+        self.device = get_device(device)
 
         self.ptr = None
         self.trajectory = None
@@ -45,53 +54,39 @@ class RolloutBuffer(AbstractBuffer):
 
         self.ptr = -1
 
-        if self.device == "cuda":
-            self.trajectory = Trajectory(
-                state=torch.zeros(state_shape, dtype=torch.float32, device=self.device),
-                action=torch.zeros(
-                    action_shape, dtype=torch.float32, device=self.device
-                ),
-                reward=torch.zeros(
-                    single_value_shape, dtype=torch.float32, device=self.device
-                ),
-                next_state=torch.zeros(
-                    state_shape, dtype=torch.float32, device=self.device
-                ),
-                done=torch.zeros(
-                    single_value_shape, dtype=torch.float32, device=self.device
-                ),
-                log_prob=torch.zeros(
-                    single_value_shape, dtype=torch.float32, device=self.device
-                ),
-                value=torch.zeros(
-                    single_value_shape, dtype=torch.float32, device=self.device
-                ),
-                next_value=torch.zeros(
-                    single_value_shape, dtype=torch.float32, device=self.device
-                ),
-            )
-        else:
-            self.trajectory = Trajectory(
-                state=np.zeros(state_shape, dtype=np.float32),
-                action=np.zeros(action_shape, dtype=np.float32),
-                reward=np.zeros(single_value_shape, dtype=np.float32),
-                next_state=np.zeros(state_shape, dtype=np.float32),
-                done=np.zeros(single_value_shape, dtype=np.float32),
-                log_prob=np.zeros(single_value_shape, dtype=np.float32),
-                value=np.zeros(single_value_shape, dtype=np.float32),
-                next_value=np.zeros(single_value_shape, dtype=np.float32),
-            )
+        self.trajectory = Trajectory(
+            state=torch.zeros(state_shape, dtype=torch.float32, device=self.device),
+            action=torch.zeros(action_shape, dtype=torch.float32, device=self.device),
+            reward=torch.zeros(
+                single_value_shape, dtype=torch.float32, device=self.device
+            ),
+            next_state=torch.zeros(
+                state_shape, dtype=torch.float32, device=self.device
+            ),
+            done=torch.zeros(
+                single_value_shape, dtype=torch.float32, device=self.device
+            ),
+            log_prob=torch.zeros(
+                single_value_shape, dtype=torch.float32, device=self.device
+            ),
+            value=torch.zeros(
+                single_value_shape, dtype=torch.float32, device=self.device
+            ),
+            next_value=torch.zeros(
+                single_value_shape, dtype=torch.float32, device=self.device
+            ),
+        )
 
     def push(
         self,
-        state: Any,
-        action: Any,
-        reward: Any,
-        next_state: Any,
-        done: Any,
-        log_prob: Optional[Any] = None,
-        value: Optional[Any] = None,
-        next_value: Optional[Any] = None,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        reward: torch.Tensor,
+        next_state: torch.Tensor,
+        done: torch.Tensor,
+        log_prob: Optional[torch.Tensor] = None,
+        value: Optional[torch.Tensor] = None,
+        next_value: Optional[torch.Tensor] = None,
     ):
         # Update pointer
         self.ptr = (self.ptr + 1) % self.max_size
@@ -113,33 +108,25 @@ class RolloutBuffer(AbstractBuffer):
             self.trajectory.next_value[self.ptr] = next_value
 
     def sample(self, batch_size: int) -> Trajectory:
-        assert batch_size > 0, "batch_size must be greater than 0."
-        assert batch_size <= len(
-            self
-        ), "batch_size must be less than or equal to the current capacity."
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0.")
+        if batch_size > len(self):
+            raise ValueError(
+                "batch_size must be less than or equal to the current capacity."
+            )
 
         # Get the trajectory
         sample = self.trajectory[:batch_size]
 
         # Replace 0s with None
-        if self.device == "cuda":
-            if torch.all(sample.log_prob == 0):
-                sample = sample._replace(log_prob=None)
+        if torch.all(sample.log_prob == 0):
+            sample = sample._replace(log_prob=None)
 
-            if torch.all(sample.value == 0):
-                sample = sample._replace(value=None)
+        if torch.all(sample.value == 0):
+            sample = sample._replace(value=None)
 
-            if torch.all(sample.next_value == 0):
-                sample = sample._replace(next_value=None)
-        else:
-            if np.all(sample.log_prob == 0):
-                sample = sample._replace(log_prob=None)
-
-            if np.all(sample.value == 0):
-                sample = sample._replace(value=None)
-
-            if np.all(sample.next_value == 0):
-                sample = sample._replace(next_value=None)
+        if torch.all(sample.next_value == 0):
+            sample = sample._replace(next_value=None)
 
         return sample
 

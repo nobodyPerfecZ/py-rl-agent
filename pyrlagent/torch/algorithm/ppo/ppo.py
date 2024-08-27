@@ -1,16 +1,18 @@
 from typing import Optional
 
 import gymnasium as gym
-import numpy as np
 import torch
 from torch import nn
 from tqdm import tqdm
 
 from pyrlagent.torch.algorithm.algorithm import AbstractRLAlgorithm
 from pyrlagent.torch.buffer.rollout_buffer import RolloutBuffer
-from pyrlagent.torch.config.train import (RLTrainConfig, RLTrainState,
-                                          create_rl_components_eval,
-                                          create_rl_components_train)
+from pyrlagent.torch.config.train import (
+    RLTrainConfig,
+    RLTrainState,
+    create_rl_components_eval,
+    create_rl_components_train,
+)
 from pyrlagent.torch.experience.metric import gae
 from pyrlagent.torch.util.device import get_device
 
@@ -56,10 +58,6 @@ class PPO(AbstractRLAlgorithm):
         update_steps (int):
             The number of gradient steps per update
     """
-
-    # TODO: Use @functools.singledispatch to simplify the code with different types of inputs
-    # TODO: Remake the non_discounted_return, discounted_return, and gae function with @functools.singledispatch
-    # https://docs.python.org/3.10/library/functools.html#module-functools
 
     def __init__(
         self,
@@ -169,70 +167,50 @@ class PPO(AbstractRLAlgorithm):
 
         return total_loss
 
-    def _fit_numpy(
-        self,
-        num_timesteps: int,
-        train_state: Optional[RLTrainState] = None,
-    ) -> list[float]:
-        # Create the training environment
-        self._setup_fit(train_state=train_state)
+    def update(self):
+        # Get the trajectories
+        trajectory = self.rollout_buffer.sample(self.steps_per_trajectory)
 
-        # Reset parameters
-        self.network.train()
-        progressbar = tqdm(total=int(num_timesteps))
-        progressbar.update(0)
+        # Calculate the advantages, targets according to Generalized Advantage Estimation (GAE)
+        advantages, targets = gae(
+            trajectory.reward,
+            trajectory.value,
+            trajectory.next_value,
+            trajectory.done,
+            self.gamma,
+            self.gae_lambda,
+        )
 
-        # Reset the environment
-        state, _ = self.env.reset()
-        for _ in range(0, int(num_timesteps), self.num_envs):
-            # Get the next action
-            pi, value = self.network.forward(
-                torch.from_numpy(state).to(device=self.device, dtype=torch.float32)
-            )
-            action = pi.sample()
-            log_prob = self.network.log_prob(pi, action)
+        for _ in range(self.update_steps):
+            # Zero the gradients
+            self.optimizer.zero_grad()
 
-            # Convert the tensors to numpy arrays
-            value = value.cpu().detach().numpy()
-            action = action.cpu().detach().numpy()
-            log_prob = log_prob.cpu().detach().numpy()
-
-            # Do a single step on the environment
-            next_state, reward, terminated, truncated, _ = self.env.step(action)
-            done = np.logical_or(terminated, truncated)
-
-            _, next_value = self.network.forward(
-                torch.from_numpy(next_state).to(device=self.device, dtype=torch.float32)
-            )
-            next_value = next_value.cpu().detach().numpy()
-
-            # Update the replay buffer by pushing the given transition
-            self.rollout_buffer.push(
-                state=state,
-                action=action,
-                reward=reward,
-                next_state=next_state,
-                done=done,
-                log_prob=log_prob,
-                value=value,
-                next_value=next_value,
+            # Compute the PPO Loss (actor loss + critic loss)
+            loss = self._compute_loss(
+                states=trajectory.state,
+                actions=trajectory.action,
+                log_probs=trajectory.log_prob,
+                advantages=advantages,
+                values=trajectory.value,
+                targets=targets,
             )
 
-            # Update the state
-            state = next_state
+            # Perform the backward propagation
+            loss.backward()
 
-            if len(self.rollout_buffer) == self.steps_per_trajectory:
-                # Case: Update the actor critic network
-                self._update_numpy()
+            # Clip the gradients
+            nn.utils.clip_grad_norm_(self.network.parameters(), self.max_gradient_norm)
 
-            progressbar.update(self.num_envs)
+            # Perform the gradient update
+            self.optimizer.step()
 
-        # Close all necessary objects
-        self.env.close()
-        progressbar.close()
-        return None
+        # Perform a learning rate scheduler update
+        self.lr_scheduler.step()
 
-    def _fit_torch(
+        # Reset the buffer
+        self.rollout_buffer.reset()
+
+    def fit(
         self,
         num_timesteps: int,
         train_state: Optional[RLTrainState] = None,
@@ -283,7 +261,7 @@ class PPO(AbstractRLAlgorithm):
 
             if len(self.rollout_buffer) == self.steps_per_trajectory:
                 # Case: Update the actor critic network
-                self._update_torch()
+                self.update()
 
             progressbar.update(self.num_envs)
 
@@ -292,155 +270,7 @@ class PPO(AbstractRLAlgorithm):
         progressbar.close()
         return None
 
-    def fit(
-        self,
-        num_timesteps: int,
-        train_state: Optional[RLTrainState] = None,
-    ) -> list[float]:
-        if self.device == "cuda":
-            return self._fit_torch(num_timesteps=num_timesteps, train_state=train_state)
-        else:
-            return self._fit_numpy(num_timesteps=num_timesteps, train_state=train_state)
-
-    def _update_numpy(self):
-        # Get the trajectories
-        trajectory = self.rollout_buffer.sample(self.steps_per_trajectory)
-
-        # Calculate the advantages, targets according to Generalized Advantage Estimation (GAE)
-        advantages, targets = gae(
-            trajectory.reward,
-            trajectory.value,
-            trajectory.next_value,
-            trajectory.done,
-            self.gamma,
-            self.gae_lambda,
-        )
-
-        # Convert numpy array to pytorch tensor
-        states = torch.from_numpy(trajectory.state).to(
-            device=self.device, dtype=torch.float32
-        )
-        actions = torch.from_numpy(trajectory.action).to(
-            device=self.device, dtype=torch.float32
-        )
-        log_probs = torch.from_numpy(trajectory.log_prob).to(
-            device=self.device, dtype=torch.float32
-        )
-        advantages = torch.from_numpy(advantages.copy()).to(
-            device=self.device, dtype=torch.float32
-        )
-        values = torch.from_numpy(trajectory.value).to(
-            device=self.device, dtype=torch.float32
-        )
-        targets = torch.from_numpy(targets).to(device=self.device, dtype=torch.float32)
-
-        for _ in range(self.update_steps):
-            # Zero the gradients
-            self.optimizer.zero_grad()
-
-            # Compute the PPO Loss (actor loss + critic loss)
-            loss = self._compute_loss(
-                states=states,
-                actions=actions,
-                log_probs=log_probs,
-                advantages=advantages,
-                values=values,
-                targets=targets,
-            )
-
-            # Perform the backward propagation
-            loss.backward()
-
-            # Clip the gradients
-            nn.utils.clip_grad_norm_(self.network.parameters(), self.max_gradient_norm)
-
-            # Perform the gradient update
-            self.optimizer.step()
-
-        # Perform a learning rate scheduler update
-        self.lr_scheduler.step()
-
-        # Reset the buffer
-        self.rollout_buffer.reset()
-
-    def _update_torch(self):
-        # Get the trajectories
-        trajectory = self.rollout_buffer.sample(self.steps_per_trajectory)
-
-        # Calculate the advantages, targets according to Generalized Advantage Estimation (GAE)
-        advantages, targets = gae(
-            trajectory.reward,
-            trajectory.value,
-            trajectory.next_value,
-            trajectory.done,
-            self.gamma,
-            self.gae_lambda,
-        )
-
-        for _ in range(self.update_steps):
-            # Zero the gradients
-            self.optimizer.zero_grad()
-
-            # Compute the PPO Loss (actor loss + critic loss)
-            loss = self._compute_loss(
-                states=trajectory.state,
-                actions=trajectory.action,
-                log_probs=trajectory.log_prob,
-                advantages=advantages,
-                values=trajectory.value,
-                targets=targets,
-            )
-
-            # Perform the backward propagation
-            loss.backward()
-
-            # Clip the gradients
-            nn.utils.clip_grad_norm_(self.network.parameters(), self.max_gradient_norm)
-
-            # Perform the gradient update
-            self.optimizer.step()
-
-        # Perform a learning rate scheduler update
-        self.lr_scheduler.step()
-
-        # Reset the buffer
-        self.rollout_buffer.reset()
-
-    def _eval_numpy(
-        self,
-        num_timesteps: int,
-        train_state: Optional[RLTrainState] = None,
-    ) -> list[float]:
-        # Create the training environment
-        self._setup_eval(train_state=train_state)
-
-        # Reset parameters
-        self.network.eval()
-        progressbar = tqdm(total=int(num_timesteps))
-
-        # Reset the environment
-        state, _ = self.env.reset()
-        for _ in range(0, int(num_timesteps)):
-            # Get the next action
-            pi, _ = self.network.forward(
-                torch.from_numpy(state).to(device=self.device, dtype=torch.float32)
-            )
-            action = pi.sample().cpu().detach().numpy()
-
-            # Do a single step on the environment
-            next_state, reward, terminated, truncated, _ = self.env.step(action)
-
-            # Update the progressbar
-            progressbar.update(1)
-
-            # Update the state
-            state = next_state
-
-        # Close all necessary objects
-        self.env.close()
-        return None
-
-    def _eval_torch(
+    def eval(
         self,
         num_timesteps: int,
         train_state: Optional[RLTrainState] = None,
@@ -471,20 +301,6 @@ class PPO(AbstractRLAlgorithm):
         # Close all necessary objects
         self.env.close()
         return None
-
-    def eval(
-        self,
-        num_timesteps: int,
-        train_state: Optional[RLTrainState] = None,
-    ) -> list[float]:
-        if self.device == "cuda":
-            return self._eval_torch(
-                num_timesteps=num_timesteps, train_state=train_state
-            )
-        else:
-            return self._eval_numpy(
-                num_timesteps=num_timesteps, train_state=train_state
-            )
 
     def __str__(self) -> str:
         header = f"{self.__class__.__name__}("
