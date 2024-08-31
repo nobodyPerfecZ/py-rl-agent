@@ -1,33 +1,37 @@
 import torch.nn as nn
 
 from pyrlagent.torch.algorithm import PPO
-from pyrlagent.torch.config.env import EnvConfig
-from pyrlagent.torch.config.lr_scheduler import LRSchedulerConfig
-from pyrlagent.torch.config.network import NetworkConfig
-from pyrlagent.torch.config.optimizer import OptimizerConfig
-from pyrlagent.torch.config.train import RLTrainConfig, RLTrainState
+from pyrlagent.torch.config import (
+    EnvConfig,
+    LRSchedulerConfig,
+    NetworkConfig,
+    OptimizerConfig,
+    RLTrainConfig,
+    RLTrainState,
+)
+
 
 if __name__ == "__main__":
     agent = PPO(
         train_config=RLTrainConfig(
             env_config=EnvConfig(
-                env_type="LunarLander-v3",
-                env_kwargs={},
+                id="LunarLander-v3",
+                kwargs={},
             ),
             network_config=NetworkConfig(
-                network_type="mlp-discrete",
-                network_kwargs={
+                id="mlp-discrete",
+                kwargs={
                     "hidden_features": [256, 256, 256, 256],
                     "activation": nn.Tanh,
                 },
             ),
             optimizer_config=OptimizerConfig(
-                optimizer_type="adam",
-                optimizer_kwargs={"lr": 2.5e-4},
+                id="adam",
+                kwargs={"lr": 2.5e-4},
             ),
             lr_scheduler_config=LRSchedulerConfig(
-                lr_scheduler_type="exponential",
-                lr_scheduler_kwargs={"gamma": 0.99},
+                id="exponential",
+                kwargs={"gamma": 0.99},
             ),
         ),
         max_gradient_norm=1.0,
@@ -42,7 +46,7 @@ if __name__ == "__main__":
         device="auto",
     )
     # Train the agent
-    agent.fit(num_timesteps=1e5)
+    agent.fit(num_timesteps=3e6)
 
     # Create a checkpoint of the agent
     train_state = RLTrainState(
