@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 
-from pyrlagent.torch.util.network import cnn, mlp
+from pyrlagent.torch.util import cnn, mlp
 
 
 class AbstractCriticNetwork(nn.Module, ABC):
@@ -36,6 +36,7 @@ class AbstractCriticNetwork(nn.Module, ABC):
             torch.Tensor:
                 The value of the observation
         """
+        x = x.to(dtype=torch.float32)
         return self.critic_value(x)
 
 
@@ -52,6 +53,7 @@ class MLPCriticNetwork(AbstractCriticNetwork):
         )
 
     def critic_value(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.to(dtype=torch.float32)
         return self.critic_net(x).squeeze(dim=-1)
 
 

@@ -2,7 +2,7 @@ import unittest
 
 import torch.nn as nn
 
-from pyrlagent.torch.util.network import cnn, cnn_in_features, mlp
+from pyrlagent.torch.util import cnn, cnn_in_features, mlp
 
 
 class TestNetwork(unittest.TestCase):

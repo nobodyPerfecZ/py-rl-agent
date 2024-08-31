@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -75,10 +76,20 @@ def mlp(
         activation_kwargs (dict):
             The arguments for the activation function
 
+    Examples:
+        >>> # TODO: Add examples
+
     Returns:
         nn.Module:
             The MLP network
     """
+    if in_features <= 0:
+        raise ValueError("in_features must be greater than 0.")
+    if any(hf <= 0 for hf in hidden_features):
+        raise ValueError("hidden_features must be greater than 0.")
+    if out_features <= 0:
+        raise ValueError("out_features must be greater than 0.")
+
     # Combine the features together
     features = [in_features] + hidden_features + [out_features]
 
@@ -86,7 +97,11 @@ def mlp(
     for j in range(len(features) - 1):
         activation = activation if j < len(features) - 2 else nn.Identity
         layers += [
-            nn.Linear(in_features=features[j], out_features=features[j + 1]),
+            nn.Linear(
+                in_features=features[j],
+                out_features=features[j + 1],
+                dtype=torch.float32,
+            ),
             activation(),
         ]
     return nn.Sequential(*layers)
@@ -115,9 +130,33 @@ def cnn(
         conv_kernel_sizes (list[int]): _description_
         pooling_kernel_sizes (list[int]): _description_
 
+    Examples:
+        >>> # TODO: Add examples here
+
     Returns:
         nn.Module: _description_
     """
+    if any(i <= 0 for i in input_shape):
+        raise ValueError("input_shape must be greater than 0.")
+    if any(hc <= 0 for hc in hidden_channels):
+        raise ValueError("hidden_channels must be greater than 0.")
+    if any(hf <= 0 for hf in hidden_features):
+        raise ValueError("hidden_features must be greater than 0.")
+    if out_features <= 0:
+        raise ValueError("out_features must be greater than 0.")
+    if any(cks <= 0 for cks in conv_kernel_sizes):
+        raise ValueError("conv_kernel_sizes must be greater than 0.")
+    if any(pks <= 0 for pks in pooling_kernel_sizes):
+        raise ValueError("pooling_kernel_sizes must be greater than 0.")
+    if len(hidden_channels) != len(conv_kernel_sizes):
+        raise ValueError(
+            "hidden_channels and conv_kernel_sizes must have the same length."
+        )
+    if len(hidden_channels) != len(pooling_kernel_sizes):
+        raise ValueError(
+            "hidden_channels and pooling_kernel_sizes must have the same length."
+        )
+
     # Combine the channels together
     cnn_channels = [input_shape[0]] + hidden_channels
 
@@ -131,6 +170,7 @@ def cnn(
                 in_channels=cnn_channels[j],
                 out_channels=cnn_channels[j + 1],
                 kernel_size=conv_kernel_sizes[j],
+                dtype=torch.float32,
             ),
             pooling(kernel_size=pooling_kernel_sizes[j]),
             activation(),

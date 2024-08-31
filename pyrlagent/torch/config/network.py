@@ -15,8 +15,8 @@ from pyrlagent.torch.network import (
 class NetworkConfig:
     """Configuration of the neural network."""
 
-    network_type: str
-    network_kwargs: dict[str, Any]
+    id: str
+    kwargs: dict[str, Any]
 
 
 def create_network(
@@ -41,19 +41,19 @@ def create_network(
         nn.Module:
             The neural network
     """
-    if network_config.network_type == "cnn-discrete":
+    if network_config.id == "cnn-discrete":
         network = CNNCategoricalActorCriticNetwork
-    elif network_config.network_type == "mlp-discrete":
+    elif network_config.id == "mlp-discrete":
         network = MLPCategoricalActorCriticNetwork
-    elif network_config.network_type == "cnn-continuous":
+    elif network_config.id == "cnn-continuous":
         network = CNNGaussianActorCriticNetwork
-    elif network_config.network_type == "mlp-continuous":
+    elif network_config.id == "mlp-continuous":
         network = MLPGaussianActorCriticNetwork
     else:
-        raise ValueError(f"Invalid network type: {network_config.network_type}.")
+        raise ValueError(f"Invalid network type: {network_config.id}.")
 
     return network(
         obs_dim=obs_dim,
         act_dim=act_dim,
-        **network_config.network_kwargs,
+        **network_config.kwargs,
     )

@@ -1,6 +1,6 @@
 import unittest
 
-from pyrlagent.torch.util.device import get_device
+from pyrlagent.torch.util import get_device
 
 
 class TestDevice(unittest.TestCase):

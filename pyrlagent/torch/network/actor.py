@@ -7,7 +7,7 @@ from torch.distributions.categorical import Categorical
 from torch.distributions.distribution import Distribution
 from torch.distributions.normal import Normal
 
-from pyrlagent.torch.util.network import cnn, mlp
+from pyrlagent.torch.util import cnn, mlp
 
 
 class AbstractActorNetwork(nn.Module, ABC):
@@ -58,6 +58,7 @@ class AbstractActorNetwork(nn.Module, ABC):
             Distribution:
                 The probability distribution over the actions
         """
+        x = x.to(dtype=torch.float32)
         pi = self.distribution(x)
         return pi
 
@@ -81,10 +82,12 @@ class MLPCategoricalActorNetwork(AbstractActorNetwork):
         )
 
     def distribution(self, x: torch.Tensor) -> Distribution:
+        x = x.to(dtype=torch.float32)
         logits = self.logits_net(x)
         return Categorical(logits=logits)
 
     def log_prob(self, pi: Distribution, a: torch.Tensor) -> torch.Tensor:
+        a = a.to(dtype=torch.float32)
         return pi.log_prob(a)
 
 
@@ -144,11 +147,13 @@ class MLPGaussianActorNetwork(AbstractActorNetwork):
         )
 
     def distribution(self, x: torch.Tensor) -> Distribution:
+        x = x.to(dtype=torch.float32)
         mu = self.mu_net(x)
         std = torch.exp(self.log_std)
         return Normal(mu, std)
 
     def log_prob(self, pi: Distribution, a: torch.Tensor) -> torch.Tensor:
+        a = a.to(dtype=torch.float32)
         return pi.log_prob(a).sum(dim=-1)
 
 

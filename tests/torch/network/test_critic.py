@@ -3,8 +3,8 @@ import unittest
 import torch
 import torch.nn as nn
 
-from pyrlagent.torch.network.critic import MLPCriticNetwork
-from pyrlagent.torch.util.env import get_vector_env
+from pyrlagent.torch.network import MLPCriticNetwork
+from pyrlagent.torch.util import get_vector_env
 
 
 class TestMLPCriticNetwork(unittest.TestCase):
@@ -13,7 +13,10 @@ class TestMLPCriticNetwork(unittest.TestCase):
     def setUp(self):
         self.num_envs = 10
         self.env = get_vector_env(
-            env_id="CartPole-v1", num_envs=self.num_envs, render_mode=None
+            env_id="CartPole-v1",
+            num_envs=self.num_envs,
+            device="cpu",
+            render_mode=None,
         )
         self.network = MLPCriticNetwork(
             obs_dim=self.env.single_observation_space.shape[0],
@@ -27,7 +30,7 @@ class TestMLPCriticNetwork(unittest.TestCase):
     def test_critic_value(self):
         """Tests the critic_value() method."""
         obs, _ = self.env.reset()
-        value = self.network.critic_value(torch.from_numpy(obs).to(torch.float32))
+        value = self.network.critic_value(obs)
 
         self.assertIsInstance(value, torch.Tensor)
         self.assertEqual((self.num_envs,), value.shape)
@@ -35,7 +38,7 @@ class TestMLPCriticNetwork(unittest.TestCase):
     def test_forward(self):
         """Tests the forward() method."""
         obs, _ = self.env.reset()
-        value = self.network.critic_value(torch.from_numpy(obs).to(torch.float32))
+        value = self.network.critic_value(obs)
 
         self.assertIsInstance(value, torch.Tensor)
         self.assertEqual((self.num_envs,), value.shape)

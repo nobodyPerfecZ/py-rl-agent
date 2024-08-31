@@ -2,9 +2,9 @@ from typing import Optional
 
 import torch
 
-from pyrlagent.torch.buffer.abstract_buffer import AbstractBuffer
-from pyrlagent.torch.experience.trajectory import Trajectory
-from pyrlagent.torch.util.device import get_device
+from pyrlagent.torch.buffer import AbstractBuffer
+from pyrlagent.torch.experience import Trajectory
+from pyrlagent.torch.util import get_device
 
 
 class RolloutBuffer(AbstractBuffer):

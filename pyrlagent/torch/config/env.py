@@ -3,18 +3,20 @@ from typing import Any
 
 import gymnasium as gym
 
-from pyrlagent.torch.util.env import get_env, get_vector_env
+from pyrlagent.torch.util import get_env, get_vector_env
 
 
 @dataclass
 class EnvConfig:
     """Configuration of the RL environment."""
 
-    env_type: str
-    env_kwargs: dict[str, Any]
+    id: str
+    kwargs: dict[str, Any]
 
 
-def create_env_train(env_config: EnvConfig, num_envs: int, device: str) -> gym.Env:
+def create_env_train(
+    env_config: EnvConfig, num_envs: int, device: str
+) -> gym.vector.VectorEnv:
     """
     Create the Gymnasium environment for training.
 
@@ -25,17 +27,20 @@ def create_env_train(env_config: EnvConfig, num_envs: int, device: str) -> gym.E
         num_envs (int):
             The number of environments to run in parallel
 
+        device (str):
+            The device to run the PyTorch computation
+
     Returns:
         gym.Env:
             The Gymnasium environment
     """
     # Get the vectorized environment
     env = get_vector_env(
-        env_id=env_config.env_type,
+        env_id=env_config.id,
         num_envs=num_envs,
         device=device,
         render_mode=None,
-        **env_config.env_kwargs,
+        **env_config.kwargs,
     )
     return env
 
@@ -48,15 +53,18 @@ def create_env_eval(env_config: EnvConfig, device: str) -> gym.Env:
         env_config (EnvConfig):
             The configuration of the environment
 
+        device (str):
+            The device to run the PyTorch computation
+
     Returns:
         gym.Env:
             The Gymnasium environment
     """
     env = get_env(
-        env_id=env_config.env_type,
+        env_id=env_config.id,
         device=device,
         render_mode="human",
-        **env_config.env_kwargs,
+        **env_config.kwargs,
     )
 
     return env

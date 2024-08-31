@@ -4,8 +4,13 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical, Normal
 
-from pyrlagent.torch.network.actor_critic import *
-from pyrlagent.torch.util.env import get_vector_env
+from pyrlagent.torch.network import (
+    CNNCategoricalActorCriticNetwork,
+    CNNGaussianActorCriticNetwork,
+    MLPCategoricalActorCriticNetwork,
+    MLPGaussianActorCriticNetwork,
+)
+from pyrlagent.torch.util import get_vector_env
 
 
 class TestMLPCategoricalActorCriticNetwork(unittest.TestCase):
@@ -14,7 +19,10 @@ class TestMLPCategoricalActorCriticNetwork(unittest.TestCase):
     def setUp(self):
         self.num_envs = 10
         self.env = get_vector_env(
-            env_id="CartPole-v1", num_envs=self.num_envs, render_mode=None
+            env_id="CartPole-v1",
+            num_envs=self.num_envs,
+            device="cpu",
+            render_mode=None,
         )
         self.network = MLPCategoricalActorCriticNetwork(
             obs_dim=self.env.single_observation_space.shape[0],
@@ -29,7 +37,7 @@ class TestMLPCategoricalActorCriticNetwork(unittest.TestCase):
     def test_distribution(self):
         """Tests the distribution() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
+        pi = self.network.distribution(obs)
 
         self.assertIsInstance(pi, Categorical)
         self.assertEqual(
@@ -39,10 +47,8 @@ class TestMLPCategoricalActorCriticNetwork(unittest.TestCase):
     def test_log_prob(self):
         """Tests the log_prob() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
-        log_prob = self.network.log_prob(
-            pi, torch.from_numpy(self.env.action_space.sample())
-        )
+        pi = self.network.distribution(obs)
+        log_prob = self.network.log_prob(pi, pi.sample())
 
         self.assertIsInstance(log_prob, torch.Tensor)
         self.assertEqual((self.num_envs,), log_prob.shape)
@@ -50,7 +56,7 @@ class TestMLPCategoricalActorCriticNetwork(unittest.TestCase):
     def test_critic_value(self):
         """Tests the critic_value() method."""
         obs, _ = self.env.reset()
-        value = self.network.critic_value(torch.from_numpy(obs).to(torch.float32))
+        value = self.network.critic_value(obs)
 
         self.assertIsInstance(value, torch.Tensor)
         self.assertEqual((self.num_envs,), value.shape)
@@ -58,7 +64,7 @@ class TestMLPCategoricalActorCriticNetwork(unittest.TestCase):
     def test_forward(self):
         """Tests the forward() method."""
         obs, _ = self.env.reset()
-        pi, value = self.network.forward(torch.from_numpy(obs).to(torch.float32))
+        pi, value = self.network.forward(obs)
 
         self.assertIsInstance(pi, Categorical)
         self.assertEqual(
@@ -82,7 +88,10 @@ class TestMLPGaussianActorCriticNetwork(unittest.TestCase):
     def setUp(self):
         self.num_envs = 10
         self.env = get_vector_env(
-            env_id="Ant-v4", num_envs=self.num_envs, render_mode=None
+            env_id="Ant-v5",
+            num_envs=self.num_envs,
+            device="cpu",
+            render_mode=None,
         )
         self.network = MLPGaussianActorCriticNetwork(
             obs_dim=self.env.single_observation_space.shape[0],
@@ -97,7 +106,7 @@ class TestMLPGaussianActorCriticNetwork(unittest.TestCase):
     def test_distribution(self):
         """Tests the distribution() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
+        pi = self.network.distribution(obs)
 
         self.assertIsInstance(pi, Normal)
         self.assertEqual(
@@ -110,10 +119,8 @@ class TestMLPGaussianActorCriticNetwork(unittest.TestCase):
     def test_log_prob(self):
         """Tests the log_prob() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
-        log_prob = self.network.log_prob(
-            pi, torch.from_numpy(self.env.action_space.sample())
-        )
+        pi = self.network.distribution(obs)
+        log_prob = self.network.log_prob(pi, pi.sample())
 
         self.assertIsInstance(log_prob, torch.Tensor)
         self.assertEqual((self.num_envs,), log_prob.shape)
@@ -121,7 +128,7 @@ class TestMLPGaussianActorCriticNetwork(unittest.TestCase):
     def test_forward(self):
         """Tests the forward() method."""
         obs, _ = self.env.reset()
-        pi, value = self.network.forward(torch.from_numpy(obs).to(torch.float32))
+        pi, value = self.network.forward(obs)
 
         self.assertIsInstance(pi, Normal)
         self.assertEqual(

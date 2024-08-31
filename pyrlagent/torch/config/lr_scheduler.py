@@ -8,8 +8,8 @@ import torch
 class LRSchedulerConfig:
     """Configuration of the learning rate scheduler."""
 
-    lr_scheduler_type: str
-    lr_scheduler_kwargs: dict[str, Any]
+    id: str
+    kwargs: dict[str, Any]
 
 
 def create_lr_scheduler(
@@ -29,16 +29,16 @@ def create_lr_scheduler(
         torch.optim.lr_scheduler.LRScheduler:
             The learning rate scheduler
     """
-    if lr_scheduler_config.lr_scheduler_type == "step":
+    if lr_scheduler_config.id == "step":
         lr_scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer=optimizer, **lr_scheduler_config.lr_scheduler_kwargs
+            optimizer=optimizer, **lr_scheduler_config.kwargs
         )
-    elif lr_scheduler_config.lr_scheduler_type == "exponential":
+    elif lr_scheduler_config.id == "exponential":
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer=optimizer, **lr_scheduler_config.lr_scheduler_kwargs
+            optimizer=optimizer, **lr_scheduler_config.kwargs
         )
     else:
         raise ValueError(
-            f"Invalid learning rate scheduler type: {lr_scheduler_config.lr_scheduler_type}."
+            f"Invalid learning rate scheduler type: {lr_scheduler_config.id}."
         )
     return lr_scheduler

@@ -4,7 +4,7 @@ from typing import Optional, Union
 import numpy as np
 import torch
 
-from pyrlagent.torch.experience.trajectory import Trajectory
+from pyrlagent.torch.experience import Trajectory
 
 
 class AbstractBuffer(ABC):

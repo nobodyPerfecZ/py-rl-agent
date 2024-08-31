@@ -2,7 +2,7 @@ import unittest
 
 import gymnasium as gym
 
-from pyrlagent.torch.util.env import (
+from pyrlagent.torch.util import (
     get_env,
     get_obs_act_dims,
     get_obs_act_space,

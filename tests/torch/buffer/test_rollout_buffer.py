@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from pyrlagent.torch.buffer.rollout_buffer import RolloutBuffer
+from pyrlagent.torch.buffer import RolloutBuffer
 
 
 class TestRolloutBuffer(unittest.TestCase):

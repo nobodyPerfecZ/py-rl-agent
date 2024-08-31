@@ -5,16 +5,17 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from pyrlagent.torch.algorithm.algorithm import AbstractRLAlgorithm
-from pyrlagent.torch.buffer.rollout_buffer import RolloutBuffer
-from pyrlagent.torch.config.train import (
+from pyrlagent.torch.algorithm import AbstractRLAlgorithm
+from pyrlagent.torch.config import (
+    BufferConfig,
+    create_buffer,
     RLTrainConfig,
     RLTrainState,
     create_rl_components_eval,
     create_rl_components_train,
 )
-from pyrlagent.torch.experience.metric import gae
-from pyrlagent.torch.util.device import get_device
+from pyrlagent.torch.experience import gae
+from pyrlagent.torch.util import get_device
 
 
 class PPO(AbstractRLAlgorithm):
@@ -25,11 +26,8 @@ class PPO(AbstractRLAlgorithm):
     https://arxiv.org/abs/1707.06347
 
     Attributes:
-        env_config (EnvConfig):
-            The configuration of the environment
-
-        network_config (TrainNetworkConfig):
-            The configuration of the actor critic network
+        train_config (RLTrainConfig):
+            The configuration of the RL training
 
         max_gradient_norm (float):
             The maximum gradient norm for gradient clipping
@@ -74,6 +72,7 @@ class PPO(AbstractRLAlgorithm):
         device: str = "auto",
     ):
         self.train_config = train_config
+        self.buffer_config = BufferConfig(id="rollout", kwargs={})
         self.max_gradient_norm = max_gradient_norm
         self.num_envs = num_envs
         self.steps_per_trajectory = steps_per_trajectory
@@ -104,7 +103,8 @@ class PPO(AbstractRLAlgorithm):
         )
 
         # Create the replay buffer
-        self.rollout_buffer = RolloutBuffer(
+        self.rollout_buffer = create_buffer(
+            buffer_config=self.buffer_config,
             obs_dim=self.env.single_observation_space.shape[0],
             act_dim=(
                 1

@@ -5,11 +5,28 @@ import gymnasium as gym
 import torch
 import torch.nn as nn
 
-from pyrlagent.torch.config.env import EnvConfig, create_env_eval, create_env_train
-from pyrlagent.torch.config.lr_scheduler import LRSchedulerConfig, create_lr_scheduler
-from pyrlagent.torch.config.network import NetworkConfig, create_network
-from pyrlagent.torch.config.optimizer import OptimizerConfig, create_optimizer
-from pyrlagent.torch.util.env import get_obs_act_dims, get_obs_act_space
+from pyrlagent.torch.config import (
+    EnvConfig,
+    create_env_eval,
+    create_env_train,
+    LRSchedulerConfig,
+    create_lr_scheduler,
+    NetworkConfig,
+    create_network,
+    OptimizerConfig,
+    create_optimizer,
+)
+from pyrlagent.torch.util import get_obs_act_dims, get_obs_act_space
+from pyrlagent.torch.util import get_obs_act_dims, get_obs_act_space
+
+
+@dataclass
+class RLTrainState:
+    """State of the training of a neural network in RL."""
+
+    network_state: dict[str, Any]
+    optimizer_state: dict[str, Any]
+    lr_scheduler_state: dict[str, Any]
 
 
 @dataclass
@@ -22,22 +39,16 @@ class RLTrainConfig:
     lr_scheduler_config: LRSchedulerConfig
 
 
-@dataclass
-class RLTrainState:
-    """State of the training of a neural network in RL."""
-
-    network_state: dict[str, Any]
-    optimizer_state: dict[str, Any]
-    lr_scheduler_state: dict[str, Any]
-
-
 def create_rl_components_train(
     train_config: RLTrainConfig,
     train_state: Optional[RLTrainState] = None,
     num_envs: int = 1,
     device: str = "cpu",
 ) -> tuple[
-    gym.Env, nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.LRScheduler
+    gym.vector.VectorEnv,
+    nn.Module,
+    torch.optim.Optimizer,
+    torch.optim.lr_scheduler.LRScheduler,
 ]:
     """
     Create the components for training a neural network in RL.
@@ -54,9 +65,15 @@ def create_rl_components_train(
         train_state (RLTrainState, optional):
             The state of the training of a neural network in RL
 
+        num_envs (int):
+            The number of parallel environments for the training
+
+        device (str):
+            The device to run the PyTorch computation
+
     Returns:
-        tuple[gym.Env, nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.LRScheduler]:
-            env (gym.Env):
+        tuple[gym.vector.VectorEnv, nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.LRScheduler]:
+            env (gym.vector.VectorEnv):
                 The environment for training the agent
 
             network (nn.Module):
@@ -122,6 +139,9 @@ def create_rl_components_eval(
 
         train_state (RLTrainState, optional):
             The state of the training of a neural network in RL
+
+        device (str):
+            The device to run the PyTorch computation
 
     Returns:
         tuple[gym.Env, nn.Module]:

@@ -1,11 +1,13 @@
-from pyrlagent.torch.experience import metric
-from pyrlagent.torch.experience import trajectory
+from pyrlagent.torch.experience.metric import (
+    non_discounted_return,
+    discounted_return,
+    gae,
+)
+from pyrlagent.torch.experience.trajectory import Trajectory
 
-non_discounted_return = metric.non_discounted_return
-discounted_return = metric.discounted_return
-gae = metric.gae
+del metric  # type: ignore[name-defined] # noqa: F821
+del trajectory  # type: ignore[name-defined] # noqa: F821
 
-Trajectory = trajectory.Trajectory
 
 __all__ = [
     "non_discounted_return",

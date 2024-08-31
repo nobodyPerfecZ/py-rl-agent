@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from pyrlagent.torch.buffer.replay_buffer import ReplayBuffer
+from pyrlagent.torch.buffer import ReplayBuffer
 
 
 class TestReplayBufferTorch(unittest.TestCase):

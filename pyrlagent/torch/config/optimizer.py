@@ -9,8 +9,8 @@ import torch.nn as nn
 class OptimizerConfig:
     """Configuration of the optimizer."""
 
-    optimizer_type: str
-    optimizer_kwargs: dict[str, Any]
+    id: str
+    kwargs: dict[str, Any]
 
 
 def create_optimizer(
@@ -30,15 +30,15 @@ def create_optimizer(
         torch.optim.Optimizer:
             The optimizer
     """
-    if optimizer_config.optimizer_type == "sgd":
+    if optimizer_config.id == "sgd":
         optimizer = torch.optim.SGD(
-            params=network.parameters(), **optimizer_config.optimizer_kwargs
+            params=network.parameters(), **optimizer_config.kwargs
         )
-    elif optimizer_config.optimizer_type == "adam":
+    elif optimizer_config.id == "adam":
         optimizer = torch.optim.Adam(
-            params=network.parameters(), **optimizer_config.optimizer_kwargs
+            params=network.parameters(), **optimizer_config.kwargs
         )
     else:
-        raise ValueError(f"Invalid optimizer type: {optimizer_config.optimizer_type}.")
+        raise ValueError(f"Invalid optimizer type: {optimizer_config.id}.")
 
     return optimizer

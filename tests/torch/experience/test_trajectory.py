@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import torch
 
-from pyrlagent.torch.experience.trajectory import Trajectory
+from pyrlagent.torch.experience import Trajectory
 
 
 class TestTrajectory(unittest.TestCase):

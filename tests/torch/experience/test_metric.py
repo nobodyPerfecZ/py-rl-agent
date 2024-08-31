@@ -3,8 +3,7 @@ import unittest
 import numpy as np
 import torch
 
-from pyrlagent.torch.experience.metric import (discounted_return, gae,
-                                               non_discounted_return)
+from pyrlagent.torch.experience import discounted_return, gae, non_discounted_return
 
 
 class TestMetric(unittest.TestCase):

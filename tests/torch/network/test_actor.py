@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical, Normal
 
-from pyrlagent.torch.network.actor import (
+from pyrlagent.torch.network import (
     MLPCategoricalActorNetwork,
     MLPGaussianActorNetwork,
 )
-from pyrlagent.torch.util.env import get_vector_env
+from pyrlagent.torch.util import get_vector_env
 
 
 class TestMLPCategoricalActorNetwork(unittest.TestCase):
@@ -17,7 +17,10 @@ class TestMLPCategoricalActorNetwork(unittest.TestCase):
     def setUp(self):
         self.num_envs = 10
         self.env = get_vector_env(
-            env_id="CartPole-v1", num_envs=self.num_envs, render_mode=None
+            env_id="CartPole-v1",
+            num_envs=self.num_envs,
+            device="cpu",
+            render_mode=None,
         )
         self.network = MLPCategoricalActorNetwork(
             obs_dim=self.env.single_observation_space.shape[0],
@@ -32,7 +35,7 @@ class TestMLPCategoricalActorNetwork(unittest.TestCase):
     def test_distribution(self):
         """Tests the distribution() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
+        pi = self.network.distribution(obs)
 
         self.assertIsInstance(pi, Categorical)
         self.assertEqual(
@@ -42,10 +45,8 @@ class TestMLPCategoricalActorNetwork(unittest.TestCase):
     def test_log_prob(self):
         """Tests the log_prob() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
-        log_prob = self.network.log_prob(
-            pi, torch.from_numpy(self.env.action_space.sample())
-        )
+        pi = self.network.distribution(obs)
+        log_prob = self.network.log_prob(pi, pi.sample())
 
         self.assertIsInstance(log_prob, torch.Tensor)
         self.assertEqual((self.num_envs,), log_prob.shape)
@@ -53,7 +54,7 @@ class TestMLPCategoricalActorNetwork(unittest.TestCase):
     def test_forward(self):
         """Tests the forward() method."""
         obs, _ = self.env.reset()
-        pi = self.network.forward(torch.from_numpy(obs).to(torch.float32))
+        pi = self.network.forward(obs)
 
         self.assertIsInstance(pi, Categorical)
         self.assertEqual(
@@ -74,7 +75,10 @@ class TestMLPGaussianActorNetwork(unittest.TestCase):
     def setUp(self):
         self.num_envs = 10
         self.env = get_vector_env(
-            env_id="Ant-v4", num_envs=self.num_envs, render_mode=None
+            env_id="Ant-v5",
+            num_envs=self.num_envs,
+            device="cpu",
+            render_mode=None,
         )
         self.network = MLPGaussianActorNetwork(
             obs_dim=self.env.single_observation_space.shape[0],
@@ -89,7 +93,7 @@ class TestMLPGaussianActorNetwork(unittest.TestCase):
     def test_distribution(self):
         """Tests the distribution() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
+        pi = self.network.distribution(obs)
 
         self.assertIsInstance(pi, Normal)
         self.assertEqual(
@@ -102,10 +106,8 @@ class TestMLPGaussianActorNetwork(unittest.TestCase):
     def test_log_prob(self):
         """Tests the log_prob() method."""
         obs, _ = self.env.reset()
-        pi = self.network.distribution(torch.from_numpy(obs).to(torch.float32))
-        log_prob = self.network.log_prob(
-            pi, torch.from_numpy(self.env.action_space.sample())
-        )
+        pi = self.network.distribution(obs)
+        log_prob = self.network.log_prob(pi, pi.sample())
 
         self.assertIsInstance(log_prob, torch.Tensor)
         self.assertEqual((self.num_envs,), log_prob.shape)
@@ -113,7 +115,7 @@ class TestMLPGaussianActorNetwork(unittest.TestCase):
     def test_forward(self):
         """Tests the forward() method."""
         obs, _ = self.env.reset()
-        pi = self.network.forward(torch.from_numpy(obs).to(torch.float32))
+        pi = self.network.forward(obs)
 
         self.assertIsInstance(pi, Normal)
         self.assertEqual(

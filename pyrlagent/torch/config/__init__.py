@@ -1,33 +1,25 @@
-from pyrlagent.torch.config import env
-from pyrlagent.torch.config import lr_scheduler
-from pyrlagent.torch.config import network
-from pyrlagent.torch.config import optimizer
-from pyrlagent.torch.config import train
+from pyrlagent.torch.config.buffer import BufferConfig, create_buffer
+from pyrlagent.torch.config.env import EnvConfig, create_env_eval, create_env_train
+from pyrlagent.torch.config.lr_scheduler import LRSchedulerConfig, create_lr_scheduler
+from pyrlagent.torch.config.network import NetworkConfig, create_network
+from pyrlagent.torch.config.optimizer import OptimizerConfig, create_optimizer
+from pyrlagent.torch.config.train import (
+    RLTrainConfig,
+    RLTrainState,
+    create_rl_components_eval,
+    create_rl_components_train,
+)
 
-# env.py
-EnvConfig = env.EnvConfig
-create_env_train = env.create_env_train
-create_env_eval = env.create_env_eval
-
-# lr_scheduler.py
-LRSchedulerConfig = lr_scheduler.LRSchedulerConfig
-create_lr_scheduler = lr_scheduler.create_lr_scheduler
-
-# network.py
-NetworkConfig = network.NetworkConfig
-create_network = network.create_network
-
-# optimizer.py
-OptimizerConfig = optimizer.OptimizerConfig
-create_optimizer = optimizer.create_optimizer
-
-# train.py
-RLTrainConfig = train.RLTrainConfig
-RLTrainState = train.RLTrainState
-create_rl_components_train = train.create_rl_components_train
-create_rl_components_eval = train.create_rl_components_eval
+del buffer  # type: ignore[name-defined] # noqa: F821
+del env  # type: ignore[name-defined] # noqa: F821
+del lr_scheduler  # type: ignore[name-defined] # noqa: F821
+del network  # type: ignore[name-defined] # noqa: F821
+del optimizer  # type: ignore[name-defined] # noqa: F821
+del train  # type: ignore[name-defined] # noqa: F821
 
 __all__ = [
+    "BufferConfig",
+    "create_buffer",
     "EnvConfig",
     "create_env_train",
     "create_env_eval",

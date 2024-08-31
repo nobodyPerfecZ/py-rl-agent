@@ -1,25 +1,26 @@
-from pyrlagent.torch.network import actor
-from pyrlagent.torch.network import critic
-from pyrlagent.torch.network import actor_critic
+from pyrlagent.torch.network.actor import (
+    AbstractActorNetwork,
+    CNNCategoricalActorNetwork,
+    CNNGaussianActorNetwork,
+    MLPCategoricalActorNetwork,
+    MLPGaussianActorNetwork,
+)
+from pyrlagent.torch.network.actor_critic import (
+    AbstractActorCriticNetwork,
+    CNNCategoricalActorCriticNetwork,
+    CNNGaussianActorCriticNetwork,
+    MLPCategoricalActorCriticNetwork,
+    MLPGaussianActorCriticNetwork,
+)
+from pyrlagent.torch.network.critic import (
+    AbstractCriticNetwork,
+    CNNCriticNetwork,
+    MLPCriticNetwork,
+)
 
-# Actor networks
-AbstractActorNetwork = actor.AbstractActorNetwork
-MLPCategoricalActorNetwork = actor.MLPCategoricalActorNetwork
-CNNCategoricalActorNetwork = actor.CNNCategoricalActorNetwork
-MLPGaussianActorNetwork = actor.MLPGaussianActorNetwork
-CNNGaussianActorNetwork = actor.CNNGaussianActorNetwork
-
-# Critic networks
-AbstractCriticNetwork = critic.AbstractCriticNetwork
-MLPCriticNetwork = critic.MLPCriticNetwork
-CNNCriticNetwork = critic.CNNCriticNetwork
-
-# Actor Critic networks
-AbstractActorCriticNetwork = actor_critic.AbstractActorCriticNetwork
-MLPCategoricalActorCriticNetwork = actor_critic.MLPCategoricalActorCriticNetwork
-CNNCategoricalActorCriticNetwork = actor_critic.CNNCategoricalActorCriticNetwork
-MLPGaussianActorCriticNetwork = actor_critic.MLPGaussianActorCriticNetwork
-CNNGaussianActorCriticNetwork = actor_critic.CNNGaussianActorCriticNetwork
+del actor  # type: ignore[name-defined] # noqa: F821
+del critic  # type: ignore[name-defined] # noqa: F821
+del actor_critic  # type: ignore[name-defined] # noqa: F821
 
 __all__ = [
     "AbstractActorNetwork",
