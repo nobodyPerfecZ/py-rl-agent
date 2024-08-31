@@ -1,23 +1,28 @@
-## PyRLAgent: Reinforcement Learning (RL) Library
-PyRLAgent is a comprehensive library featuring a suite of RL approaches implemented in Python. 
-It provides a range of algorithms designed to facilitate the development and experimentation of RL models.
+# pyrlagent: Reinforcement Learning (RL) Library 🌍
+pyrlagent is a library featuring a suite of RL approaches implemented in Python/PyTorch/JAX.
 
-
-### Implemented RL Algorithms
+## Implemented Algorithms 🤖
 PyRLAgent offers implementations of the following RL algorithms:
-- Deep Q-Network (DQN)
-- Double Deep Q-Network (DDQN)
-- Clipped Double Deep Q-Network (Clipped DDQN)
-- C51
-- Proximal Policy Optimization (PPO)
 
-### Examples
-In the `examples` directory, you can discover a variety of scripts demonstrating how to use different RL algorithms
-across various Gymnasium environments.
+- In PyTorch:
+    - Proximal Policy Optimization (PPO)
 
-### Further Resources
-- DQN: https://arxiv.org/abs/1312.5602
-- DDQN: https://arxiv.org/abs/1509.06461
-- Clipped DDQN: https://arxiv.org/abs/1802.09477
-- C51: https://arxiv.org/abs/1707.06887
-- PPO: https://arxiv.org/abs/1707.06347
+- In JAX:
+    - TODO
+
+## Installation ⚙️
+TODO: Add text here
+
+## TODOs ⛏
+- Return the non-discounted returns for the train/eval function of RL algorithms
+- Test the implementation of CNN networks
+- Add the environments from gymboy inside of create_env/create_vec_env (coming soon)
+- Implement DDPG methods (TD3, SAC, ...) in torch/jax
+
+## Resources 📘
+- RL Basics: https://spinningup.openai.com/en/latest/
+- PPO Paper: https://arxiv.org/abs/1707.06347
+
+## Development 🔧
+Contributions are welcome! Please fork the repository and submit a pull request.
+Make sure to follow the coding standards (coming soon) and write tests for any new features or bug fixes.
