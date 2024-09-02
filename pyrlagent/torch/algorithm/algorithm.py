@@ -1,8 +1,15 @@
 from abc import ABC, abstractmethod
 
+from pyrlagent.torch.config import RLTrainState
+
 
 class AbstractRLAlgorithm(ABC):
     """Abstract class for Reinforcement Learning (RL) algorithms."""
+
+    @abstractmethod
+    def state_dict(self) -> RLTrainState:
+        """Returns the state of the algorithm."""
+        pass
 
     @abstractmethod
     def update(self):

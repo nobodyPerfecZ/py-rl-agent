@@ -7,7 +7,6 @@ from pyrlagent.torch.config import (
     NetworkConfig,
     OptimizerConfig,
     RLTrainConfig,
-    RLTrainState,
 )
 
 
@@ -49,11 +48,7 @@ if __name__ == "__main__":
     agent.fit(num_timesteps=3e6)
 
     # Create a checkpoint of the agent
-    train_state = RLTrainState(
-        network_state=agent.network.state_dict(),
-        optimizer_state=agent.optimizer.state_dict(),
-        lr_scheduler_state=agent.lr_scheduler.state_dict(),
-    )
+    train_state = agent.state_dict()
 
     # Evaluate the agent
     agent.eval(num_timesteps=5e3, train_state=train_state)

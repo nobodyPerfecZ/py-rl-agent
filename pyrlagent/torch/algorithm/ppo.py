@@ -167,6 +167,13 @@ class PPO(AbstractRLAlgorithm):
 
         return total_loss
 
+    def state_dict(self) -> RLTrainState:
+        return RLTrainState(
+            network_state=self.network.state_dict(),
+            optimizer_state=self.optimizer.state_dict(),
+            lr_scheduler_state=self.lr_scheduler.state_dict(),
+        )
+
     def update(self):
         # Get the trajectories
         trajectory = self.rollout_buffer.sample(self.steps_per_trajectory)
@@ -199,7 +206,10 @@ class PPO(AbstractRLAlgorithm):
             loss.backward()
 
             # Clip the gradients
-            nn.utils.clip_grad_norm_(self.network.parameters(), self.max_gradient_norm)
+            nn.utils.clip_grad_norm_(
+                parameters=self.network.parameters(),
+                max_norm=self.max_gradient_norm,
+            )
 
             # Perform the gradient update
             self.optimizer.step()

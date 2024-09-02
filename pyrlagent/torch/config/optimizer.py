@@ -30,12 +30,56 @@ def create_optimizer(
         torch.optim.Optimizer:
             The optimizer
     """
-    if optimizer_config.id == "sgd":
-        optimizer = torch.optim.SGD(
+    if optimizer_config.id == "adadelta":
+        optimizer = torch.optim.Adadelta(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "adagrad":
+        optimizer = torch.optim.Adagrad(
             params=network.parameters(), **optimizer_config.kwargs
         )
     elif optimizer_config.id == "adam":
         optimizer = torch.optim.Adam(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "adamw":
+        optimizer = torch.optim.AdamW(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "sparse_adam":
+        optimizer = torch.optim.SparseAdam(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "adamax":
+        optimizer = torch.optim.Adamax(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "asgd":
+        optimizer = torch.optim.ASGD(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "lbfgs":
+        optimizer = torch.optim.LBFGS(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "nadam":
+        optimizer = torch.optim.NAdam(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "radam":
+        optimizer = torch.optim.RAdam(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "rmsprop":
+        optimizer = torch.optim.RMSprop(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "rprop":
+        optimizer = torch.optim.Rprop(
+            params=network.parameters(), **optimizer_config.kwargs
+        )
+    elif optimizer_config.id == "sgd":
+        optimizer = torch.optim.SGD(
             params=network.parameters(), **optimizer_config.kwargs
         )
     else:
