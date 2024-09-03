@@ -5,6 +5,7 @@ import torch.nn as nn
 def cnn_in_features(obs_shape: tuple[int, int, int], conv_layers: list[nn.Module]):
     """
     Computes the in_features for the first linear layer in a CNN.
+
     This method supports only nn.Conv2d, nn.MaxPool2d, and nn.AvgPool2d layers.
 
     Args:
@@ -20,7 +21,6 @@ def cnn_in_features(obs_shape: tuple[int, int, int], conv_layers: list[nn.Module
     """
     c, h, w = obs_shape
     for layer in conv_layers:
-        # Update height and width
         if isinstance(layer, nn.Conv2d):
             h = (
                 h
@@ -46,7 +46,6 @@ def cnn_in_features(obs_shape: tuple[int, int, int], conv_layers: list[nn.Module
             h = (h + 2 * layer.padding - layer.kernel_size) // layer.stride + 1
             w = (w + 2 * layer.padding - layer.kernel_size) // layer.stride + 1
 
-    # Compute the in_features for the first linear layer
     in_features = c * h * w
     return in_features
 
@@ -76,12 +75,19 @@ def mlp(
         activation_kwargs (dict):
             The arguments for the activation function
 
-    Examples:
-        >>> # TODO: Add examples
-
     Returns:
         nn.Module:
             The MLP network
+
+    Examples:
+        >>> mlp(4, [64, 64], 2, nn.ReLU)
+        Sequential(
+          (0): Linear(in_features=4, out_features=64, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=64, out_features=64, bias=True)
+          (3): ReLU()
+          (4): Linear(in_features=64, out_features=2, bias=True)
+        )
     """
     if in_features <= 0:
         raise ValueError("in_features must be greater than 0.")
@@ -130,11 +136,18 @@ def cnn(
         conv_kernel_sizes (list[int]): _description_
         pooling_kernel_sizes (list[int]): _description_
 
-    Examples:
-        >>> # TODO: Add examples here
-
     Returns:
         nn.Module: _description_
+
+    Examples:
+        >>> cnn(...)
+        Sequential(
+          (0): Linear(in_features=4, out_features=64, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=64, out_features=64, bias=True)
+          (3): ReLU()
+          (4): Linear(in_features=64, out_features=2, bias=True)
+        )
     """
     if any(i <= 0 for i in input_shape):
         raise ValueError("input_shape must be greater than 0.")

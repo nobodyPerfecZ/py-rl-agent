@@ -22,8 +22,8 @@ class NetworkConfig:
 
 def create_network(
     network_config: NetworkConfig,
-    obs_dim: int,
-    act_dim: int,
+    obs_dim: int | tuple[int, int, int],
+    act_dim: int | tuple[int, int, int],
 ) -> nn.Module:
     """
     Create the neural network for the actor-critic agent.
@@ -32,11 +32,11 @@ def create_network(
         network_config (NetworkConfig):
             The configuration of the neural network
 
-        obs_dim (int):
-            The dimension of the observation space
+        obs_dim (int | tuple[int, int, int]):
+            The dimensions of the observation space
 
-        act_dim (int):
-            The dimension of the action space
+        act_dim (int | tuple[int, int, int]):
+            The dimensions of the action space
 
     Returns:
         nn.Module:
