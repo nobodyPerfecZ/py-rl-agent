@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 
 
-def cnn_in_features(obs_shape: tuple[int, int, int], conv_layers: list[nn.Module]):
+def cnn_in_features(
+    obs_shape: tuple[int, int, int],
+    conv_layers: list[nn.Module],
+) -> int:
     """
     Computes the in_features for the first linear layer in a CNN.
 
@@ -116,47 +119,53 @@ def mlp(
 def cnn(
     input_shape: tuple[int, int, int],
     hidden_channels: list[int],
-    hidden_features: list[int],
-    out_features: int,
     pooling: nn.Module,
     activation: nn.Module,
     conv_kernel_sizes: list[int],
     pooling_kernel_sizes: list[int],
 ) -> nn.Module:
     """
-    # TODO: Add documentation
+    Creates a Convolutional Neural Network (CNN) network.
 
     Args:
-        input_shape (tuple[int, int, int]): _description_
-        hidden_channels (list[int]): _description_
-        hidden_features (list[int]): _description_
-        out_features (int): _description_
-        pooling (nn.Module): _description_
-        activation (nn.Module): _description_
-        conv_kernel_sizes (list[int]): _description_
-        pooling_kernel_sizes (list[int]): _description_
+        input_shape (tuple[int, int, int]):
+            The shape of the input observation in (C, H, W) format
+
+        hidden_channels (list[int]):
+            The number of hidden channels for each convolutional layer
+
+        pooling (nn.Module):
+            The pooling layer after each convolutional layer
+
+        activation (nn.Module):
+            The activation function after each pooling layer
+
+        conv_kernel_sizes (list[int]):
+            The kernel sizes for each convolutional layer
+
+        pooling_kernel_sizes (list[int]):
+            The kernel sizes for each pooling layer
 
     Returns:
-        nn.Module: _description_
+        nn.Module:
+            The CNN network
 
     Examples:
-        >>> cnn(...)
+        >>> cnn((3, 100, 100), [32, 64], nn.MaxPool2d, nn.Tanh, [7, 5], [3, 3])
         Sequential(
-          (0): Linear(in_features=4, out_features=64, bias=True)
-          (1): ReLU()
-          (2): Linear(in_features=64, out_features=64, bias=True)
-          (3): ReLU()
-          (4): Linear(in_features=64, out_features=2, bias=True)
+            (0): Conv2d(3, 32, kernel_size=(7, 7), stride=(1, 1))
+            (1): MaxPool2d(kernel_size=3, stride=3, padding=0, dilation=1, ceil_mode=False)
+            (2): Tanh()
+            (3): Conv2d(32, 64, kernel_size=(5, 5), stride=(1, 1))
+            (4): MaxPool2d(kernel_size=3, stride=3, padding=0, dilation=1, ceil_mode=False)
+            (5): Tanh()
+            (6): Flatten(start_dim=1, end_dim=-1)
         )
     """
     if any(i <= 0 for i in input_shape):
         raise ValueError("input_shape must be greater than 0.")
     if any(hc <= 0 for hc in hidden_channels):
         raise ValueError("hidden_channels must be greater than 0.")
-    if any(hf <= 0 for hf in hidden_features):
-        raise ValueError("hidden_features must be greater than 0.")
-    if out_features <= 0:
-        raise ValueError("out_features must be greater than 0.")
     if any(cks <= 0 for cks in conv_kernel_sizes):
         raise ValueError("conv_kernel_sizes must be greater than 0.")
     if any(pks <= 0 for pks in pooling_kernel_sizes):
@@ -188,19 +197,89 @@ def cnn(
             pooling(kernel_size=pooling_kernel_sizes[j]),
             activation(),
         ]
+    cnn_layers += [nn.Flatten()]
+    return nn.Sequential(*cnn_layers)
 
-    # Combine the features together
-    in_features = cnn_in_features(input_shape, cnn_layers)
-    features = [in_features] + hidden_features + [out_features]
+
+def cnn_mlp(
+    input_shape: tuple[int, int, int],
+    hidden_channels: list[int],
+    hidden_features: list[int],
+    out_features: int,
+    pooling: nn.Module,
+    activation: nn.Module,
+    conv_kernel_sizes: list[int],
+    pooling_kernel_sizes: list[int],
+) -> tuple[nn.Module, nn.Module]:
+    """
+    Creates a Convolutional Neural Network (CNN) followed by Multi-Layer Perceptron (MLP) network.
+
+    Args:
+        input_shape (tuple[int, int, int]):
+            The shape of the input observation in (C, H, W) format
+
+        hidden_channels (list[int]):
+            The number of hidden channels for each convolutional layer
+
+        hidden_features (int):
+            The number of hidden features for each linear layer
+
+        pooling (nn.Module):
+            The pooling layer after each convolutional layer
+
+        activation (nn.Module):
+            The activation function after each pooling layer / linear layer
+
+        conv_kernel_sizes (list[int]):
+            The kernel sizes for each convolutional layer
+
+        pooling_kernel_sizes (list[int]):
+            The kernel sizes for each pooling layer
+
+    Returns:
+        tuple[nn.Module, nn.Module]:
+            cnn_net (nn.Module):
+                The CNN part of the network
+
+            mlp_net (nn.Module):
+                The MLP part of the network
+
+    Examples:
+        >>> cnn_net, mlp_net = cnn_mlp((3, 100, 100), [32, 64], [128], 1, nn.MaxPool2d, nn.Tanh, [7, 5], [3, 3])
+        >>> cnn_net
+        Sequential(
+            (0): Conv2d(3, 32, kernel_size=(7, 7), stride=(1, 1))
+            (1): MaxPool2d(kernel_size=3, stride=3, padding=0, dilation=1, ceil_mode=False)
+            (2): Tanh()
+            (3): Conv2d(32, 64, kernel_size=(5, 5), stride=(1, 1))
+            (4): MaxPool2d(kernel_size=3, stride=3, padding=0, dilation=1, ceil_mode=False)
+            (5): Tanh()
+            (6): Flatten(start_dim=1, end_dim=-1)
+        )
+        >>> mlp_net
+        Sequential(
+            (0): Linear(in_features=5184, out_features=128, bias=True)
+            (1): Tanh()
+            (2): Linear(in_features=128, out_features=1, bias=True)
+            (3): Identity()
+        )
+    """
+    # Build the CNN layers
+    cnn_net = cnn(
+        input_shape=input_shape,
+        hidden_channels=hidden_channels,
+        pooling=pooling,
+        activation=activation,
+        conv_kernel_sizes=conv_kernel_sizes,
+        pooling_kernel_sizes=pooling_kernel_sizes,
+    )
 
     # Build the MLP layers
-    mlp_layers = []
-    for j in range(len(features) - 1):
-        activation = activation if j < len(features) - 2 else nn.Identity
-        mlp_layers += [
-            nn.Linear(in_features=features[j], out_features=features[j + 1]),
-            activation(),
-        ]
+    mlp_net = mlp(
+        in_features=cnn_in_features(input_shape, list(cnn_net.modules())),
+        hidden_features=hidden_features,
+        out_features=out_features,
+        activation=activation,
+    )
 
-    layers = cnn_layers + [nn.Flatten()] + mlp_layers
-    return nn.Sequential(*layers)
+    return cnn_net, mlp_net

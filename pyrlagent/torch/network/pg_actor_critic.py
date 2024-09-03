@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.distributions import Categorical, Distribution, Normal
 
-from pyrlagent.torch.util import cnn, mlp
+from pyrlagent.torch.util import cnn_mlp, mlp
 
 
 class PGActorCriticNetwork(nn.Module, ABC):
@@ -132,7 +132,7 @@ class CNNDiscretePGActorCriticNetwork(PGActorCriticNetwork):
         pooling_kernel_sizes: list[int],
     ):
         super().__init__()
-        self.logits_net = cnn(
+        self.cnn_logits_net, self.mlp_logits_net = cnn_mlp(
             input_shape=obs_dim,
             hidden_channels=hidden_channels,
             hidden_features=hidden_features,
@@ -142,7 +142,7 @@ class CNNDiscretePGActorCriticNetwork(PGActorCriticNetwork):
             conv_kernel_sizes=conv_kernel_sizes,
             pooling_kernel_sizes=pooling_kernel_sizes,
         )
-        self.critic_net = cnn(
+        self.cnn_critic_net, self.mlp_critic_net = cnn_mlp(
             input_shape=obs_dim,
             hidden_channels=hidden_channels,
             hidden_features=hidden_features,
@@ -154,14 +154,14 @@ class CNNDiscretePGActorCriticNetwork(PGActorCriticNetwork):
         )
 
     def distribution(self, x: torch.Tensor) -> Distribution:
-        logits = self.logits_net(x)
+        logits = self.mlp_logits_net(self.cnn_logits_net(x))
         return Categorical(logits=logits)
 
     def log_prob(self, pi: Distribution, a: torch.Tensor) -> torch.Tensor:
         return pi.log_prob(a)
 
     def critic_value(self, x: torch.Tensor) -> torch.Tensor:
-        return self.critic_net(x).squeeze(dim=-1)
+        return self.mlp_critic_net(self.cnn_critic_net(x)).squeeze(dim=-1)
 
 
 class MLPContinuousPGActorCriticNetwork(PGActorCriticNetwork):
@@ -221,7 +221,7 @@ class CNNContinuousPGActorCriticNetwork(PGActorCriticNetwork):
         pooling_kernel_sizes: list[int],
     ):
         super().__init__()
-        self.mu_net = cnn(
+        self.cnn_mu_net, self.mlp_mu_net = cnn_mlp(
             input_shape=obs_dim,
             hidden_channels=hidden_channels,
             hidden_features=hidden_features,
@@ -234,7 +234,7 @@ class CNNContinuousPGActorCriticNetwork(PGActorCriticNetwork):
         self.log_std = torch.nn.Parameter(
             torch.as_tensor(-0.5 * torch.ones(act_dim, dtype=torch.float32))
         )
-        self.critic_net = cnn(
+        self.cnn_critic_net, self.mlp_critic_net = cnn_mlp(
             input_shape=obs_dim,
             hidden_channels=hidden_channels,
             hidden_features=hidden_features,
@@ -246,7 +246,7 @@ class CNNContinuousPGActorCriticNetwork(PGActorCriticNetwork):
         )
 
     def distribution(self, x: torch.Tensor) -> Distribution:
-        mu = self.mu_net(x)
+        mu = self.mlp_mu_net(self.cnn_mu_net(x))
         std = torch.exp(self.log_std)
         return Normal(mu, std)
 
@@ -254,4 +254,4 @@ class CNNContinuousPGActorCriticNetwork(PGActorCriticNetwork):
         return pi.log_prob(a).sum(dim=-1)
 
     def critic_value(self, x: torch.Tensor) -> torch.Tensor:
-        return self.critic_net(x).squeeze(dim=-1)
+        return self.mlp_critic_net(self.cnn_critic_net(x)).squeeze(dim=-1)

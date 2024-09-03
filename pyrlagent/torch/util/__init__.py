@@ -5,7 +5,7 @@ from pyrlagent.torch.util.env import (
     get_obs_act_space,
     get_vector_env,
 )
-from pyrlagent.torch.util.network import cnn, cnn_in_features, mlp
+from pyrlagent.torch.util.network import cnn, cnn_in_features, cnn_mlp, mlp
 
 del device  # type: ignore[name-defined] # noqa: F821
 del env  # type: ignore[name-defined] # noqa: F821
@@ -20,4 +20,5 @@ __all__ = [
     "cnn_in_features",
     "mlp",
     "cnn",
+    "cnn_mlp",
 ]
