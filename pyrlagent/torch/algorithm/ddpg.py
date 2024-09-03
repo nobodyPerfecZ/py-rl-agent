@@ -1,3 +1,4 @@
+import copy
 from typing import Optional
 
 import gymnasium as gym
@@ -8,22 +9,22 @@ from tqdm import tqdm
 from pyrlagent.torch.algorithm import RLAlgorithm
 from pyrlagent.torch.config import (
     BufferConfig,
-    create_buffer,
     RLTrainConfig,
     RLTrainState,
+    create_buffer,
     create_rl_components_eval,
     create_rl_components_train,
 )
-from pyrlagent.torch.experience import gae
 from pyrlagent.torch.util import get_device
 
 
-class PPO(RLAlgorithm):
+class DDPG(RLAlgorithm):
     """
-    Proximal Policy Optimization (PPO).
+    # TODO: Add the docstrings
+    Deep Deterministic Policy Gradient (DDPG).
 
     The corresponding paper can be found here:
-    https://arxiv.org/abs/1707.06347
+    https://arxiv.org/abs/1509.02971
 
     Attributes:
         train_config (RLTrainConfig):
@@ -36,7 +37,7 @@ class PPO(RLAlgorithm):
             The number of different environments used for training
 
         steps_per_update (int):
-            The number of timesteps T per update
+            The number of timesteps T
 
         clip_ratio (float):
             The ratio of the trust region
@@ -63,35 +64,34 @@ class PPO(RLAlgorithm):
         max_gradient_norm: float,
         num_envs: int,
         steps_per_update: int,
-        clip_ratio: float,
+        max_size: int,
         gamma: float,
-        gae_lambda: float,
+        polyak: float,
         vf_coef: float,
-        ent_coef: float,
         update_steps: int,
         device: str = "auto",
     ):
         self.train_config = train_config
-        self.buffer_config = BufferConfig(id="rollout", kwargs={})
+        self.buffer_config = BufferConfig(id="replay", kwargs={})
         self.max_gradient_norm = max_gradient_norm
         self.num_envs = num_envs
         self.steps_per_update = steps_per_update
-        self.clip_ratio = clip_ratio
+        self.max_size = int(max_size)
         self.gamma = gamma
-        self.gae_lambda = gae_lambda
+        self.polyak = polyak
         self.vf_coef = vf_coef
-        self.ent_coef = ent_coef
         self.update_steps = update_steps
         self.device = get_device(device)
 
         self.env = None
-        self.rollout_buffer = None
+        self.replay_buffer = None
+        self.target_network = None
         self.network = None
         self.optimizer = None
         self.lr_scheduler = None
 
     def _setup_fit(self, train_state: Optional[RLTrainState] = None):
-        """Set up the necessary components for the PPO algorithm."""
+        """Set up the necessary components for the DDPG algorithm."""
         # Create the env, network, optimizer, and lr_scheduler
         self.env, self.network, self.optimizer, self.lr_scheduler = (
             create_rl_components_train(
@@ -101,9 +101,14 @@ class PPO(RLAlgorithm):
                 device=self.device,
             )
         )
+        # Create the target network
+        self.target_network = copy.deepcopy(self.network)
+        for param in self.target_network.parameters():
+            param.requires_grad = False
+        self.target_network.to(device=self.device)
 
         # Create the replay buffer
-        self.rollout_buffer = create_buffer(
+        self.replay_buffer = create_buffer(
             buffer_config=self.buffer_config,
             obs_dim=self.env.single_observation_space.shape[0],
             act_dim=(
@@ -112,12 +117,12 @@ class PPO(RLAlgorithm):
                 else self.env.single_action_space.shape[0]
             ),
             env_dim=self.num_envs,
-            max_size=self.steps_per_update,
+            max_size=self.max_size,
             device=self.device,
         )
 
     def _setup_eval(self, train_state: Optional[RLTrainState] = None):
-        """Set up the necessary components for the PPO algorithm."""
+        """Set up the necessary components for the DDPG algorithm."""
         # Create the env and network
         self.env, self.network = create_rl_components_eval(
             train_config=self.train_config,
@@ -129,42 +134,23 @@ class PPO(RLAlgorithm):
         self,
         states: torch.Tensor,
         actions: torch.Tensor,
-        log_probs: torch.Tensor,
-        advantages: torch.Tensor,
-        values: torch.Tensor,
-        targets: torch.Tensor,
+        rewards: torch.Tensor,
+        next_states: torch.Tensor,
+        dones: torch.Tensor,
     ) -> torch.Tensor:
-        """Computes the PPO loss."""
-        # Compute the probability distribution and critic values
-        next_pi, next_values = self.network(states)
+        """Computes the DDPG loss."""
+        # Compute the actor loss
+        loss_actor = -self.network.q_value(states, self.network.action(states)).mean()
 
-        # Compute the log probabilities
-        next_log_prob = self.network.log_prob(next_pi, actions)
-
-        # Actor loss
-        ratio = torch.exp(next_log_prob - log_probs)
-        loss_actor = -(
-            torch.min(
-                ratio * advantages,
-                torch.clamp(ratio, 1 - self.clip_ratio, 1 + self.clip_ratio)
-                * advantages,
+        # Compute the critic loss
+        with torch.no_grad():
+            targets = rewards + self.gamma * (1 - dones) * self.target_network.q_value(
+                next_states, self.target_network.action(next_states)
             )
-        ).mean()
+        prediction = self.network.q_value(states, actions)
+        loss_critic = ((prediction - targets) ** 2).mean()
 
-        # Critic loss
-        targets_clipped = values + torch.clamp(
-            next_values - values, -self.clip_ratio, self.clip_ratio
-        )
-        loss_critic = torch.square(next_values - targets)
-        loss_critic_clipped = torch.square(targets_clipped - targets)
-        loss_critic = 0.5 * torch.max(loss_critic, loss_critic_clipped).mean()
-
-        # Entropy bonus
-        entropy = next_pi.entropy().mean()
-
-        # Total loss
-        total_loss = loss_actor + self.vf_coef * loss_critic - self.ent_coef * entropy
-
+        total_loss = loss_actor + self.vf_coef * loss_critic
         return total_loss
 
     def state_dict(self) -> RLTrainState:
@@ -176,17 +162,7 @@ class PPO(RLAlgorithm):
 
     def update(self):
         # Get the trajectories
-        trajectory = self.rollout_buffer.sample(self.steps_per_update)
-
-        # Calculate the advantages, targets according to Generalized Advantage Estimation (GAE)
-        advantages, targets = gae(
-            trajectory.reward,
-            trajectory.value,
-            trajectory.next_value,
-            trajectory.done,
-            self.gamma,
-            self.gae_lambda,
-        )
+        trajectory = self.replay_buffer.sample(self.steps_per_update)
 
         for _ in range(self.update_steps):
             # Zero the gradients
@@ -196,10 +172,9 @@ class PPO(RLAlgorithm):
             loss = self._compute_loss(
                 states=trajectory.state,
                 actions=trajectory.action,
-                log_probs=trajectory.log_prob,
-                advantages=advantages,
-                values=trajectory.value,
-                targets=targets,
+                rewards=trajectory.reward,
+                next_states=trajectory.next_state,
+                dones=trajectory.done,
             )
 
             # Perform the backward propagation
@@ -217,8 +192,15 @@ class PPO(RLAlgorithm):
         # Perform a learning rate scheduler update
         self.lr_scheduler.step()
 
-        # Reset the buffer
-        self.rollout_buffer.reset()
+        # Perform a polyak update of the target networks
+        with torch.no_grad():
+            for params, params_target in zip(
+                self.network.parameters(), self.target_network.parameters()
+            ):
+                # NB: We use an in-place operations "mul_", "add_" to update target
+                # params, as opposed to "mul" and "add", which would make new tensors.
+                params_target.data.mul_(self.polyak)
+                params_target.data.add_((1 - self.polyak) * params.data)
 
     def fit(
         self,
@@ -236,39 +218,29 @@ class PPO(RLAlgorithm):
         # Reset the environment
         state, _ = self.env.reset()
         for _ in range(0, int(num_timesteps), self.num_envs):
-            # Get the next action and its log probability
-            pi, value = self.network(state)
-            action = pi.sample()
-            log_prob = self.network.log_prob(pi, action)
-
-            # Remove the gradients
-            value = value.detach()
-            action = action.detach()
-            log_prob = log_prob.detach()
+            # Get the next action
+            action = self.network.action(state).detach()
 
             # Do a single step on the environment
             next_state, reward, terminated, truncated, _ = self.env.step(action)
             done = torch.logical_or(terminated, truncated).detach()
 
-            _, next_value = self.network(next_state)
-            next_value = next_value.detach()
-
             # Update the replay buffer by pushing the given transition
-            self.rollout_buffer.push(
+            self.replay_buffer.push(
                 state=state,
                 action=action,
                 reward=reward,
                 next_state=next_state,
                 done=done,
-                log_prob=log_prob,
-                value=value,
-                next_value=next_value,
+                log_prob=None,
+                value=None,
+                next_value=None,
             )
 
             # Update the state
             state = next_state
 
-            if len(self.rollout_buffer) == self.steps_per_update:
+            if len(self.replay_buffer) >= self.steps_per_update:
                 # Case: Update the actor critic network
                 self.update()
 
@@ -295,8 +267,7 @@ class PPO(RLAlgorithm):
         state, _ = self.env.reset()
         for _ in range(0, int(num_timesteps)):
             # Get the next action
-            pi, _ = self.network(state)
-            action = pi.sample().detach()
+            action = self.network.action(state).detach()
 
             # Do a single step on the environment
             next_state, reward, terminated, truncated, _ = self.env.step(action)
@@ -316,11 +287,10 @@ class PPO(RLAlgorithm):
         max_gradient_norm = f"max_gradient_norm={self.max_gradient_norm},"
         num_envs = f"num_envs={self.num_envs},"
         steps_per_update = f"steps_per_update={self.steps_per_update},"
-        clip_ratio = f"clip_ratio={self.clip_ratio},"
+        batch_size = f"batch_size={self.max_size},"
         gamma = f"gamma={self.gamma},"
-        gae_lambda = f"gae_lambda={self.gae_lambda},"
+        polyak = f"polyak={self.polyak},"
         vf_coef = f"vf_coef={self.vf_coef},"
-        ent_coef = f"ent_coef={self.ent_coef},"
         update_steps = f"update_steps={self.update_steps},"
         end = ")"
 
@@ -330,11 +300,10 @@ class PPO(RLAlgorithm):
                 max_gradient_norm,
                 num_envs,
                 steps_per_update,
-                clip_ratio,
+                batch_size,
                 gamma,
-                gae_lambda,
+                polyak,
                 vf_coef,
-                ent_coef,
                 update_steps,
                 end,
             ]
@@ -349,11 +318,10 @@ class PPO(RLAlgorithm):
             "max_gradient_norm": self.max_gradient_norm,
             "num_envs": self.num_envs,
             "steps_per_update": self.steps_per_update,
-            "clip_ratio": self.clip_ratio,
+            "max_size": self.max_size,
             "gamma": self.gamma,
-            "gae_lambda": self.gae_lambda,
+            "polyak": self.polyak,
             "vf_coef": self.vf_coef,
-            "ent_coef": self.ent_coef,
             "update_steps": self.update_steps,
             "device": self.device,
         }
@@ -363,10 +331,9 @@ class PPO(RLAlgorithm):
         self.max_gradient_norm = state["max_gradient_norm"]
         self.num_envs = state["num_envs"]
         self.steps_per_update = state["steps_per_update"]
-        self.clip_ratio = state["clip_ratio"]
+        self.max_size = state["max_size"]
         self.gamma = state["gamma"]
-        self.gae_lambda = state["gae_lambda"]
+        self.polyak = state["polyak"]
         self.vf_coef = state["vf_coef"]
-        self.ent_coef = state["ent_coef"]
         self.update_steps = state["update_steps"]
         self.device = state["device"]

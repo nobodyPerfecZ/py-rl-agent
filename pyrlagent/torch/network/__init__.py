@@ -1,39 +1,24 @@
-from pyrlagent.torch.network.actor import (
-    ActorNetwork,
-    CNNCategoricalActorNetwork,
-    CNNGaussianActorNetwork,
-    MLPCategoricalActorNetwork,
-    MLPGaussianActorNetwork,
+from pyrlagent.torch.network.ddpg_actor_critic import (
+    DDPGActorCriticNetwork,
+    MLPContinuousDDPGActorCriticNetwork,
 )
-from pyrlagent.torch.network.actor_critic import (
-    ActorCriticNetwork,
-    CNNCategoricalActorCriticNetwork,
-    CNNGaussianActorCriticNetwork,
-    MLPCategoricalActorCriticNetwork,
-    MLPGaussianActorCriticNetwork,
-)
-from pyrlagent.torch.network.critic import (
-    CriticNetwork,
-    CNNCriticNetwork,
-    MLPCriticNetwork,
+from pyrlagent.torch.network.pg_actor_critic import (
+    PGActorCriticNetwork,
+    CNNDiscretePGActorCriticNetwork,
+    CNNContinuousPGActorCriticNetwork,
+    MLPDiscretePGActorCriticNetwork,
+    MLPContinuousPGActorCriticNetwork,
 )
 
-del actor  # type: ignore[name-defined] # noqa: F821
-del critic  # type: ignore[name-defined] # noqa: F821
-del actor_critic  # type: ignore[name-defined] # noqa: F821
+del ddpg_actor_critic  # type: ignore[name-defined] # noqa: F821
+del pg_actor_critic  # type: ignore[name-defined] # noqa: F821
 
 __all__ = [
-    "ActorNetwork",
-    "MLPCategoricalActorNetwork",
-    "CNNCategoricalActorNetwork",
-    "MLPGaussianActorNetwork",
-    "CNNGaussianActorNetwork",
-    "CriticNetwork",
-    "MLPCriticNetwork",
-    "CNNCriticNetwork",
-    "ActorCriticNetwork",
-    "MLPCategoricalActorCriticNetwork",
-    "CNNCategoricalActorCriticNetwork",
-    "MLPGaussianActorCriticNetwork",
-    "CNNGaussianActorCriticNetwork",
+    "DDPGActorCriticNetwork",
+    "MLPContinuousDDPGActorCriticNetwork",
+    "PGActorCriticNetwork",
+    "MLPDiscretePGActorCriticNetwork",
+    "CNNDiscretePGActorCriticNetwork",
+    "MLPContinuousPGActorCriticNetwork",
+    "CNNContinuousPGActorCriticNetwork",
 ]

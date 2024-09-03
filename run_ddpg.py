@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from pyrlagent.torch.algorithm import PPO
+from pyrlagent.torch.algorithm import DDPG
 from pyrlagent.torch.config import (
     EnvConfig,
     LRSchedulerConfig,
@@ -11,17 +11,20 @@ from pyrlagent.torch.config import (
 
 
 if __name__ == "__main__":
-    agent = PPO(
+    agent = DDPG(
         train_config=RLTrainConfig(
             env_config=EnvConfig(
                 id="Ant-v4",
                 kwargs={},
             ),
             network_config=NetworkConfig(
-                id="pg-mlp-continuous",
+                id="ddpg-mlp-continuous",
                 kwargs={
                     "hidden_features": [256, 256, 256, 256],
                     "activation": nn.Tanh,
+                    "noise_scale": 0.1,
+                    "low_action": -1.0,
+                    "high_action": 1.0,
                 },
             ),
             optimizer_config=OptimizerConfig(
@@ -36,11 +39,10 @@ if __name__ == "__main__":
         max_gradient_norm=1.0,
         num_envs=128,
         steps_per_update=32,
-        clip_ratio=0.2,
+        max_size=1e5,
         gamma=0.99,
-        gae_lambda=0.95,
+        polyak=0.95,
         vf_coef=2.0,
-        ent_coef=0.0,
         update_steps=4,
         device="auto",
     )

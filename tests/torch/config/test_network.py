@@ -4,10 +4,10 @@ import torch.nn as nn
 
 from pyrlagent.torch.config import NetworkConfig, create_network
 from pyrlagent.torch.network import (
-    CNNCategoricalActorCriticNetwork,
-    CNNGaussianActorCriticNetwork,
-    MLPCategoricalActorCriticNetwork,
-    MLPGaussianActorCriticNetwork,
+    CNNDiscretePGActorCriticNetwork,
+    CNNContinuousPGActorCriticNetwork,
+    MLPDiscretePGActorCriticNetwork,
+    MLPContinuousPGActorCriticNetwork,
 )
 
 
@@ -15,7 +15,7 @@ class TestNetworkConfig(unittest.TestCase):
     """Tests the NetworkConfig class."""
 
     def setUp(self):
-        self.cnn_discrete_id = "cnn-discrete"
+        self.cnn_discrete_id = "pg-cnn-discrete"
         self.cnn_discrete_kwargs = {
             "hidden_channels": [32, 64],
             "hidden_features": [64, 64],
@@ -25,13 +25,13 @@ class TestNetworkConfig(unittest.TestCase):
             "pooling_kernel_sizes": [3, 3],
         }
 
-        self.mlp_discrete_id = "mlp-discrete"
+        self.mlp_discrete_id = "pg-mlp-discrete"
         self.mlp_discrete_kwargs = {
             "hidden_features": [64, 64],
             "activation": nn.ReLU,
         }
 
-        self.cnn_continuous_id = "cnn-continuous"
+        self.cnn_continuous_id = "pg-cnn-continuous"
         self.cnn_continuous_kwargs = {
             "hidden_channels": [32, 64],
             "hidden_features": [64, 64],
@@ -41,7 +41,7 @@ class TestNetworkConfig(unittest.TestCase):
             "pooling_kernel_sizes": [3, 3],
         }
 
-        self.mlp_continuous_id = "mlp-continuous"
+        self.mlp_continuous_id = "pg-mlp-continuous"
         self.mlp_continuous_kwargs = {
             "hidden_features": [64, 64],
             "activation": nn.ReLU,
@@ -95,7 +95,7 @@ class TestNetworkConfig(unittest.TestCase):
             obs_dim=self.obs_img_dim,
             act_dim=self.act_dim,
         )
-        self.assertIsInstance(cnn_discrete, CNNCategoricalActorCriticNetwork)
+        self.assertIsInstance(cnn_discrete, CNNDiscretePGActorCriticNetwork)
 
         # Create a MLP discrete network
         mlp_discrete = create_network(
@@ -105,7 +105,7 @@ class TestNetworkConfig(unittest.TestCase):
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
         )
-        self.assertIsInstance(mlp_discrete, MLPCategoricalActorCriticNetwork)
+        self.assertIsInstance(mlp_discrete, MLPDiscretePGActorCriticNetwork)
 
         # Create a CNN continuous network
         cnn_continuous = create_network(
@@ -115,7 +115,7 @@ class TestNetworkConfig(unittest.TestCase):
             obs_dim=self.obs_img_dim,
             act_dim=self.act_dim,
         )
-        self.assertIsInstance(cnn_continuous, CNNGaussianActorCriticNetwork)
+        self.assertIsInstance(cnn_continuous, CNNContinuousPGActorCriticNetwork)
 
         # Create a MLP continuous network
         mlp_continuous = create_network(
@@ -125,7 +125,7 @@ class TestNetworkConfig(unittest.TestCase):
             obs_dim=self.obs_dim,
             act_dim=self.act_dim,
         )
-        self.assertIsInstance(mlp_continuous, MLPGaussianActorCriticNetwork)
+        self.assertIsInstance(mlp_continuous, MLPContinuousPGActorCriticNetwork)
 
 
 if __name__ == "__main__":

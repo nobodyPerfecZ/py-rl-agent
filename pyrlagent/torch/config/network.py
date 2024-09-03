@@ -4,10 +4,11 @@ from typing import Any
 import torch.nn as nn
 
 from pyrlagent.torch.network import (
-    CNNCategoricalActorCriticNetwork,
-    CNNGaussianActorCriticNetwork,
-    MLPCategoricalActorCriticNetwork,
-    MLPGaussianActorCriticNetwork,
+    MLPContinuousDDPGActorCriticNetwork,
+    CNNDiscretePGActorCriticNetwork,
+    CNNContinuousPGActorCriticNetwork,
+    MLPDiscretePGActorCriticNetwork,
+    MLPContinuousPGActorCriticNetwork,
 )
 
 
@@ -41,14 +42,18 @@ def create_network(
         nn.Module:
             The neural network
     """
-    if network_config.id == "cnn-discrete":
-        network = CNNCategoricalActorCriticNetwork
-    elif network_config.id == "mlp-discrete":
-        network = MLPCategoricalActorCriticNetwork
-    elif network_config.id == "cnn-continuous":
-        network = CNNGaussianActorCriticNetwork
-    elif network_config.id == "mlp-continuous":
-        network = MLPGaussianActorCriticNetwork
+    # 1. Networks for Deep Deterministic Policy Gradient (DDPG) methods
+    if network_config.id == "ddpg-mlp-continuous":
+        network = MLPContinuousDDPGActorCriticNetwork
+    # 2. Networks for Policy Gradient (PG) methods
+    elif network_config.id == "pg-cnn-discrete":
+        network = CNNDiscretePGActorCriticNetwork
+    elif network_config.id == "pg-mlp-discrete":
+        network = MLPDiscretePGActorCriticNetwork
+    elif network_config.id == "pg-cnn-continuous":
+        network = CNNContinuousPGActorCriticNetwork
+    elif network_config.id == "pg-mlp-continuous":
+        network = MLPContinuousPGActorCriticNetwork
     else:
         raise ValueError(f"Invalid network type: {network_config.id}.")
 

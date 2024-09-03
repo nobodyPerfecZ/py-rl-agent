@@ -13,7 +13,7 @@ from pyrlagent.torch.config import (
     create_rl_components_eval,
     create_rl_components_train,
 )
-from pyrlagent.torch.network import MLPCategoricalActorCriticNetwork
+from pyrlagent.torch.network import MLPDiscretePGActorCriticNetwork
 
 
 class TestRLTrainConfig(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestRLTrainConfig(unittest.TestCase):
     def setUp(self):
         self.env_config = EnvConfig(id="CartPole-v1", kwargs={})
         self.network_config = NetworkConfig(
-            id="mlp-discrete",
+            id="pg-mlp-discrete",
             kwargs={
                 "hidden_features": [64, 64],
                 "activation": nn.ReLU,
@@ -65,7 +65,7 @@ class TestRLTrainConfig(unittest.TestCase):
             device="cpu",
         )
         self.assertIsInstance(env, gym.vector.VectorEnv)
-        self.assertIsInstance(network, MLPCategoricalActorCriticNetwork)
+        self.assertIsInstance(network, MLPDiscretePGActorCriticNetwork)
         self.assertIsInstance(optimizer, torch.optim.Adam)
         self.assertIsInstance(lr_scheduler, torch.optim.lr_scheduler.StepLR)
 
@@ -82,7 +82,7 @@ class TestRLTrainConfig(unittest.TestCase):
             device=self.device,
         )
         self.assertIsInstance(env, gym.Env)
-        self.assertIsInstance(network, MLPCategoricalActorCriticNetwork)
+        self.assertIsInstance(network, MLPDiscretePGActorCriticNetwork)
 
 
 if __name__ == "__main__":

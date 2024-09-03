@@ -7,8 +7,8 @@ from torch.distributions import Categorical, Distribution, Normal
 from pyrlagent.torch.util import cnn, mlp
 
 
-class ActorCriticNetwork(nn.Module, ABC):
-    """Base class for an actor critic network."""
+class PGActorCriticNetwork(nn.Module, ABC):
+    """Base class for a PG actor critic network."""
 
     @abstractmethod
     def distribution(self, x: torch.Tensor) -> Distribution:
@@ -79,7 +79,7 @@ class ActorCriticNetwork(nn.Module, ABC):
         return pi, critic_value
 
 
-class MLPCategoricalActorCriticNetwork(ActorCriticNetwork):
+class MLPDiscretePGActorCriticNetwork(PGActorCriticNetwork):
     """MLP for the actor critic with discrete action spaces."""
 
     def __init__(
@@ -117,7 +117,7 @@ class MLPCategoricalActorCriticNetwork(ActorCriticNetwork):
         return self.critic_net(x).squeeze(dim=-1)
 
 
-class CNNCategoricalActorCriticNetwork(ActorCriticNetwork):
+class CNNDiscretePGActorCriticNetwork(PGActorCriticNetwork):
     """CNN for the actor critic with discrete action spaces."""
 
     def __init__(
@@ -164,7 +164,7 @@ class CNNCategoricalActorCriticNetwork(ActorCriticNetwork):
         return self.critic_net(x).squeeze(dim=-1)
 
 
-class MLPGaussianActorCriticNetwork(ActorCriticNetwork):
+class MLPContinuousPGActorCriticNetwork(PGActorCriticNetwork):
     """MLP for the actor critic with continuous action spaces."""
 
     def __init__(
@@ -206,7 +206,7 @@ class MLPGaussianActorCriticNetwork(ActorCriticNetwork):
         return self.critic_net(x).squeeze(dim=-1)
 
 
-class CNNGaussianActorCriticNetwork(ActorCriticNetwork):
+class CNNContinuousPGActorCriticNetwork(PGActorCriticNetwork):
     """CNN for the actor critic with continuous action spaces."""
 
     def __init__(
