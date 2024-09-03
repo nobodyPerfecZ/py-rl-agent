@@ -2,12 +2,12 @@ from typing import Optional
 
 import torch
 
-from pyrlagent.torch.buffer import AbstractBuffer
+from pyrlagent.torch.buffer import Buffer
 from pyrlagent.torch.experience import Trajectory
 from pyrlagent.torch.util import get_device
 
 
-class ReplayBuffer(AbstractBuffer):
+class ReplayBuffer(Buffer):
     """A replay buffer for storing transitions in RL after the LIFO principle."""
 
     def __init__(

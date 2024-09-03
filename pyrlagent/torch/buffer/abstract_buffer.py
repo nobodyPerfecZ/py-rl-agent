@@ -7,8 +7,8 @@ import torch
 from pyrlagent.torch.experience import Trajectory
 
 
-class AbstractBuffer(ABC):
-    """Abstract class representing a buffer for storing and sampling transitions in RL."""
+class Buffer(ABC):
+    """Base class for a buffer to store and sample transitions in RL."""
 
     @abstractmethod
     def __init__(self, **kwargs):

@@ -6,8 +6,8 @@ import torch.nn as nn
 from pyrlagent.torch.util import cnn, mlp
 
 
-class AbstractCriticNetwork(nn.Module, ABC):
-    """Abstract class for the critic network."""
+class CriticNetwork(nn.Module, ABC):
+    """Base class for a critic network."""
 
     @abstractmethod
     def critic_value(self, x: torch.Tensor) -> torch.Tensor:
@@ -40,7 +40,7 @@ class AbstractCriticNetwork(nn.Module, ABC):
         return self.critic_value(x)
 
 
-class MLPCriticNetwork(AbstractCriticNetwork):
+class MLPCriticNetwork(CriticNetwork):
     """MLP for the critic network."""
 
     def __init__(self, obs_dim: int, hidden_features: list[int], activation: nn.Module):
@@ -57,7 +57,7 @@ class MLPCriticNetwork(AbstractCriticNetwork):
         return self.critic_net(x).squeeze(dim=-1)
 
 
-class CNNCriticNetwork(AbstractCriticNetwork):
+class CNNCriticNetwork(CriticNetwork):
     """CNN for the critic network."""
 
     def __init__(

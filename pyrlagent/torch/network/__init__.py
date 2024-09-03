@@ -1,19 +1,19 @@
 from pyrlagent.torch.network.actor import (
-    AbstractActorNetwork,
+    ActorNetwork,
     CNNCategoricalActorNetwork,
     CNNGaussianActorNetwork,
     MLPCategoricalActorNetwork,
     MLPGaussianActorNetwork,
 )
 from pyrlagent.torch.network.actor_critic import (
-    AbstractActorCriticNetwork,
+    ActorCriticNetwork,
     CNNCategoricalActorCriticNetwork,
     CNNGaussianActorCriticNetwork,
     MLPCategoricalActorCriticNetwork,
     MLPGaussianActorCriticNetwork,
 )
 from pyrlagent.torch.network.critic import (
-    AbstractCriticNetwork,
+    CriticNetwork,
     CNNCriticNetwork,
     MLPCriticNetwork,
 )
@@ -23,15 +23,15 @@ del critic  # type: ignore[name-defined] # noqa: F821
 del actor_critic  # type: ignore[name-defined] # noqa: F821
 
 __all__ = [
-    "AbstractActorNetwork",
+    "ActorNetwork",
     "MLPCategoricalActorNetwork",
     "CNNCategoricalActorNetwork",
     "MLPGaussianActorNetwork",
     "CNNGaussianActorNetwork",
-    "AbstractCriticNetwork",
+    "CriticNetwork",
     "MLPCriticNetwork",
     "CNNCriticNetwork",
-    "AbstractActorCriticNetwork",
+    "ActorCriticNetwork",
     "MLPCategoricalActorCriticNetwork",
     "CNNCategoricalActorCriticNetwork",
     "MLPGaussianActorCriticNetwork",

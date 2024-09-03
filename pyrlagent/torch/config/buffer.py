@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrlagent.torch.buffer import AbstractBuffer, ReplayBuffer, RolloutBuffer
+from pyrlagent.torch.buffer import Buffer, ReplayBuffer, RolloutBuffer
 
 
 @dataclass
@@ -19,7 +19,7 @@ def create_buffer(
     env_dim: int,
     max_size: int,
     device: str,
-) -> AbstractBuffer:
+) -> Buffer:
     """
     Creates the buffer for storing the experiences for training.
 
@@ -43,7 +43,7 @@ def create_buffer(
             The device to run the PyTorch computation
 
     Returns:
-        AbstractBuffer:
+        Buffer:
             The buffer for storing the experiences for training
     """
     if buffer_config.id == "rollout":

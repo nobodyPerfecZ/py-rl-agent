@@ -10,8 +10,8 @@ from torch.distributions.normal import Normal
 from pyrlagent.torch.util import cnn, mlp
 
 
-class AbstractActorNetwork(nn.Module, ABC):
-    """Abstract class for the actor network."""
+class ActorNetwork(nn.Module, ABC):
+    """Base class for an actor network."""
 
     @abstractmethod
     def distribution(self, x: torch.Tensor) -> Distribution:
@@ -63,7 +63,7 @@ class AbstractActorNetwork(nn.Module, ABC):
         return pi
 
 
-class MLPCategoricalActorNetwork(AbstractActorNetwork):
+class MLPCategoricalActorNetwork(ActorNetwork):
     """MLP for the actor with discrete action spaces."""
 
     def __init__(
@@ -91,7 +91,7 @@ class MLPCategoricalActorNetwork(AbstractActorNetwork):
         return pi.log_prob(a)
 
 
-class CNNCategoricalActorNetwork(AbstractActorNetwork):
+class CNNCategoricalActorNetwork(ActorNetwork):
     """CNN for the actor with discrete action spaces."""
 
     def __init__(
@@ -125,7 +125,7 @@ class CNNCategoricalActorNetwork(AbstractActorNetwork):
         return pi.log_prob(a)
 
 
-class MLPGaussianActorNetwork(AbstractActorNetwork):
+class MLPGaussianActorNetwork(ActorNetwork):
     """MLP for the actor with continuous action spaces."""
 
     def __init__(
@@ -157,7 +157,7 @@ class MLPGaussianActorNetwork(AbstractActorNetwork):
         return pi.log_prob(a).sum(dim=-1)
 
 
-class CNNGaussianActorNetwork(AbstractActorNetwork):
+class CNNGaussianActorNetwork(ActorNetwork):
     """CNN for the actor with continuous action spaces."""
 
     def __init__(

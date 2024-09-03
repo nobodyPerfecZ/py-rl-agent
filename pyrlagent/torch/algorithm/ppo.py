@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from pyrlagent.torch.algorithm import AbstractRLAlgorithm
+from pyrlagent.torch.algorithm import RLAlgorithm
 from pyrlagent.torch.config import (
     BufferConfig,
     create_buffer,
@@ -18,7 +18,7 @@ from pyrlagent.torch.experience import gae
 from pyrlagent.torch.util import get_device
 
 
-class PPO(AbstractRLAlgorithm):
+class PPO(RLAlgorithm):
     """
     Proximal Policy Optimization (PPO).
 

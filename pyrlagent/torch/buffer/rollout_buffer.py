@@ -2,12 +2,12 @@ from typing import Optional
 
 import torch
 
-from pyrlagent.torch.buffer import AbstractBuffer
+from pyrlagent.torch.buffer import Buffer
 from pyrlagent.torch.experience import Trajectory
 from pyrlagent.torch.util import get_device
 
 
-class RolloutBuffer(AbstractBuffer):
+class RolloutBuffer(Buffer):
     """A time-related sequence of transitions."""
 
     def __init__(
