@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -21,14 +20,14 @@ class Buffer(ABC):
     @abstractmethod
     def push(
         self,
-        state: Union[np.ndarray, torch.Tensor],
-        action: Union[np.ndarray, torch.Tensor],
-        reward: Union[np.ndarray, torch.Tensor],
-        next_state: Union[np.ndarray, torch.Tensor],
-        done: Union[np.ndarray, torch.Tensor],
-        log_prob: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        value: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        next_value: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        state: np.ndarray | torch.Tensor,
+        action: np.ndarray | torch.Tensor,
+        reward: np.ndarray | torch.Tensor,
+        next_state: np.ndarray | torch.Tensor,
+        done: np.ndarray | torch.Tensor,
+        log_prob: np.ndarray | torch.Tensor | None = None,
+        value: np.ndarray | torch.Tensor | None = None,
+        next_value: np.ndarray | torch.Tensor | None = None,
     ):
         """
         Adds a transition (s_t, a_t, r_t, s_t+1, done, log_prob, value, next_value) to the replay buffer.

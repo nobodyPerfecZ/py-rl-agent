@@ -20,10 +20,22 @@ def get_env(
         gym.Env:
             The environment with the specified kwargs
     """
-    return gym.wrappers.NumpyToTorch(
-        env=gym.wrappers.Autoreset(gym.make(env_id, **env_kwargs)),
-        device=device,
-    )
+    # Create the environment
+    env = gym.make(env_id, **env_kwargs)
+
+    # Wrap the environment with the appropriate wrappers
+    if isinstance(env.action_space, gym.spaces.Discrete):
+        # Case: Environment has discrete action spaces
+        return gym.wrappers.NumpyToTorch(
+            env=gym.wrappers.Autoreset(env),
+            device=device,
+        )
+    else:
+        # Case: Environment has continuous action spaces
+        return gym.wrappers.NumpyToTorch(
+            env=gym.wrappers.Autoreset(gym.wrappers.ClipAction(env)),
+            device=device,
+        )
 
 
 def get_vector_env(
@@ -49,15 +61,27 @@ def get_vector_env(
         gym.vector.VectorEnv:
             The environment with the specified kwargs
     """
-    return gym.wrappers.vector.NumpyToTorch(
-        env=gym.make_vec(
-            id=env_id,
-            num_envs=num_envs,
-            vectorization_mode="sync",
-            **env_kwargs,
-        ),
-        device=device,
+    # Create the vectorized environment
+    envs = gym.make_vec(
+        id=env_id,
+        num_envs=num_envs,
+        vectorization_mode="sync",
+        **env_kwargs,
     )
+
+    # Wrap the environments with the appropriate wrappers
+    if isinstance(envs.single_action_space, gym.spaces.Discrete):
+        # Case: Environments have continuous action spaces
+        return gym.wrappers.vector.NumpyToTorch(
+            env=envs,
+            device=device,
+        )
+    else:
+        # Case: Environments have discrete action spaces
+        return gym.wrappers.vector.NumpyToTorch(
+            env=gym.wrappers.vector.ClipAction(envs),
+            device=device,
+        )
 
 
 def get_obs_act_space(env: gym.Env) -> tuple[gym.spaces.Space, gym.spaces.Space]:
