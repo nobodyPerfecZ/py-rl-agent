@@ -20,7 +20,6 @@ from pyrlagent.torch.util import get_device
 
 class DDPG(RLAlgorithm):
     """
-    # TODO: Add the docstrings
     Deep Deterministic Policy Gradient (DDPG).
 
     The corresponding paper can be found here:
@@ -37,22 +36,19 @@ class DDPG(RLAlgorithm):
             The number of different environments used for training
 
         steps_per_update (int):
-            The number of timesteps T
+            The number of timesteps T per update
 
-        clip_ratio (float):
-            The ratio of the trust region
+        max_size (int):
+            The maximum size of the replay buffer
 
         gamma (float):
             The discount factor of the return
 
-        gae_lambda (float):
-            The lambda weight of GAE
+        polyak (float):
+            The weight of the target network update
 
         vf_coef (float):
             The weight of the critic loss
-
-        ent_coef (float):
-            The weight of the entropy bonus
 
         update_steps (int):
             The number of gradient steps per update
@@ -72,6 +68,7 @@ class DDPG(RLAlgorithm):
         device: str = "auto",
     ):
         self.train_config = train_config
+        self.train_config.network_config.method = "ddpg"
         self.buffer_config = BufferConfig(id="replay", kwargs={})
         self.max_gradient_norm = max_gradient_norm
         self.num_envs = num_envs

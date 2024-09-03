@@ -1,7 +1,11 @@
 from pyrlagent.torch.config.buffer import BufferConfig, create_buffer
 from pyrlagent.torch.config.env import EnvConfig, create_env_eval, create_env_train
 from pyrlagent.torch.config.lr_scheduler import LRSchedulerConfig, create_lr_scheduler
-from pyrlagent.torch.config.network import NetworkConfig, create_network
+from pyrlagent.torch.config.network import (
+    NetworkConfig,
+    create_network,
+    create_network_id,
+)
 from pyrlagent.torch.config.optimizer import OptimizerConfig, create_optimizer
 from pyrlagent.torch.config.train import (
     RLTrainConfig,
@@ -26,6 +30,7 @@ __all__ = [
     "LRSchedulerConfig",
     "create_lr_scheduler",
     "NetworkConfig",
+    "create_network_id",
     "create_network",
     "OptimizerConfig",
     "create_optimizer",

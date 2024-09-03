@@ -22,7 +22,7 @@ class TestRLTrainConfig(unittest.TestCase):
     def setUp(self):
         self.env_config = EnvConfig(id="CartPole-v1", kwargs={})
         self.network_config = NetworkConfig(
-            id="pg-mlp-discrete",
+            method="pg",
             kwargs={
                 "hidden_features": [64, 64],
                 "activation": nn.ReLU,

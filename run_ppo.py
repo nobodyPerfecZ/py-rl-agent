@@ -14,11 +14,10 @@ if __name__ == "__main__":
     agent = PPO(
         train_config=RLTrainConfig(
             env_config=EnvConfig(
-                id="Ant-v4",
+                id="LunarLander-v3",
                 kwargs={},
             ),
             network_config=NetworkConfig(
-                id="pg-mlp-continuous",
                 kwargs={
                     "hidden_features": [256, 256, 256, 256],
                     "activation": nn.Tanh,

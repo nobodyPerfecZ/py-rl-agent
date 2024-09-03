@@ -7,16 +7,16 @@ import torch.nn as nn
 
 from pyrlagent.torch.config import (
     EnvConfig,
+    LRSchedulerConfig,
+    NetworkConfig,
+    OptimizerConfig,
     create_env_eval,
     create_env_train,
-    LRSchedulerConfig,
     create_lr_scheduler,
-    NetworkConfig,
     create_network,
-    OptimizerConfig,
+    create_network_id,
     create_optimizer,
 )
-from pyrlagent.torch.util import get_obs_act_dims, get_obs_act_space
 from pyrlagent.torch.util import get_obs_act_dims, get_obs_act_space
 
 
@@ -93,7 +93,12 @@ def create_rl_components_train(
     )
 
     # Create the network
-    obs_dim, act_dim = get_obs_act_dims(*get_obs_act_space(env))
+    obs_space, act_space = get_obs_act_space(env)
+    obs_dim, act_dim = get_obs_act_dims(obs_space, act_space)
+    train_config.network_config.id = create_network_id(
+        train_config.network_config.method, obs_space, act_space
+    )
+
     network = create_network(
         network_config=train_config.network_config,
         obs_dim=obs_dim,
@@ -155,7 +160,12 @@ def create_rl_components_eval(
     env = create_env_eval(env_config=train_config.env_config, device=device)
 
     # Create the network
-    obs_dim, act_dim = get_obs_act_dims(*get_obs_act_space(env))
+    obs_space, act_space = get_obs_act_space(env)
+    obs_dim, act_dim = get_obs_act_dims(obs_space, act_space)
+    train_config.network_config.id = create_network_id(
+        train_config.network_config.method, obs_space, act_space
+    )
+
     network = create_network(
         network_config=train_config.network_config, obs_dim=obs_dim, act_dim=act_dim
     )

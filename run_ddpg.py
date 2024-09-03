@@ -18,7 +18,6 @@ if __name__ == "__main__":
                 kwargs={},
             ),
             network_config=NetworkConfig(
-                id="ddpg-mlp-continuous",
                 kwargs={
                     "hidden_features": [256, 256, 256, 256],
                     "activation": nn.Tanh,

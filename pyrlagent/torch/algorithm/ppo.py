@@ -72,6 +72,7 @@ class PPO(RLAlgorithm):
         device: str = "auto",
     ):
         self.train_config = train_config
+        self.train_config.network_config.method = "pg"
         self.buffer_config = BufferConfig(id="rollout", kwargs={})
         self.max_gradient_norm = max_gradient_norm
         self.num_envs = num_envs
