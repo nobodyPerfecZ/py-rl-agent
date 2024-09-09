@@ -11,7 +11,7 @@ class TestNetwork(unittest.TestCase):
     def test_cnn_in_features(self):
         """Tests the cnn_in_features() method."""
         features1 = cnn_in_features(
-            obs_shape=(3, 100, 100),
+            input_shape=(3, 100, 100),
             conv_layers=[
                 nn.Conv2d(3, 32, 7),
                 nn.MaxPool2d(3),
@@ -22,7 +22,7 @@ class TestNetwork(unittest.TestCase):
         self.assertEqual(5184, features1)
 
         features2 = cnn_in_features(
-            obs_shape=(3, 50, 50),
+            input_shape=(3, 50, 50),
             conv_layers=[
                 nn.Conv2d(3, 32, 7),
                 nn.MaxPool2d(3),

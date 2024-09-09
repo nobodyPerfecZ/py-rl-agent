@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 def cnn_in_features(
-    obs_shape: tuple[int, int, int],
+    input_shape: tuple[int, int, int],
     conv_layers: list[nn.Module],
 ) -> int:
     """
@@ -12,7 +12,7 @@ def cnn_in_features(
     This method supports only nn.Conv2d, nn.MaxPool2d, and nn.AvgPool2d layers.
 
     Args:
-        obs_shape (tuple[int, int, int]):
+        input_shape (tuple[int, int, int]):
             The shape of the input observation in (C, H, W) format
 
         conv_layers (list):
@@ -22,7 +22,7 @@ def cnn_in_features(
         int:
             The number of in_features for the first linear layer
     """
-    c, h, w = obs_shape
+    c, h, w = input_shape
     for layer in conv_layers:
         if isinstance(layer, nn.Conv2d):
             h = (
