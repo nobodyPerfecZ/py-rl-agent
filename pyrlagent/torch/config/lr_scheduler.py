@@ -13,7 +13,8 @@ class LRSchedulerConfig:
 
 
 def create_lr_scheduler(
-    lr_scheduler_config: LRSchedulerConfig, optimizer: torch.optim.Optimizer
+    lr_scheduler_config: LRSchedulerConfig,
+    optimizer: torch.optim.Optimizer,
 ) -> torch.optim.lr_scheduler.LRScheduler:
     """
     Creates the learning rate scheduler for the optimizer.

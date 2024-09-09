@@ -14,7 +14,8 @@ class OptimizerConfig:
 
 
 def create_optimizer(
-    optimizer_config: OptimizerConfig, network: nn.Module
+    optimizer_config: OptimizerConfig,
+    network: nn.Module,
 ) -> torch.optim.Optimizer:
     """
     Create the optimizer for training the neural network.
